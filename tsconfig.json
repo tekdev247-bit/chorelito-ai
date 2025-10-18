@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "allowJs": false,
+    "target": "ES2019",
+    "module": "ESNext",
+    "jsx": "react-jsx",
+    "strict": true,
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@styles/*": [
+        "app/styles/*"
+      ],
+      "@lib/*": [
+        "app/lib/*"
+      ]
+    }
+  }
+}

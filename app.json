@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "Chorelito AI",
+    "slug": "chorelito-ai",
+    "scheme": "chorelito",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FFFDF9"
+    },
+    "android": {
+      "package": "com.chorelito.app",
+      "permissions": ["RECORD_AUDIO", "CAMERA","POST_NOTIFICATIONS"],
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#E8F7FF"
+      }
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ]
+  }
+}

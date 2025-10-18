@@ -1,0 +1,122 @@
+{
+  "project": "chorelito-ai",
+  "language": "typescript",
+  "objectives": [
+    "Scaffold a React Native (Expo) app with TypeScript and Firebase integration.",
+    "Implement parent/child onboarding and secure linking via SMS deep link.",
+    "Add voice control for parent: add child, assign chore, show usage, grant bonus.",
+    "Create chore and submission flows with media capture and Cloud Storage uploads.",
+    "Add Cloud Functions for AI verification and screen-time adjustments.",
+    "Implement soft enforcement overlay with dialer/SMS allowlist and 'Request More Time' flow (max 3/day).",
+    "Ship Reports and AI Settings tabs for parents.",
+    "Gamify child experience: quests, XP, streaks, pet upgrades."
+  ],
+  "files": [
+    {
+      "path": "app/child/overlay/LockOverlay.tsx",
+      "purpose": "Full-screen overlay with logo, Home, Request More Time; respects allowlist."
+    },
+    {
+      "path": "app/child/overlay/useOverlayGuard.ts",
+      "purpose": "Hook that monitors minutes + quiet hours; toggles overlay."
+    },
+    {
+      "path": "app/lib/policy/isUsageAllowed.ts",
+      "purpose": "Pure function to evaluate policy for current time + minutes."
+    },
+    {
+      "path": "app/lib/policy/requests.ts",
+      "purpose": "Client API to submit time requests and handle responses."
+    },
+    {
+      "path": "app/lib/voice/nlu.ts",
+      "purpose": "Rule-based intent/entity parser with regex/keywords; fallback hook to Cloud Function."
+    },
+    {
+      "path": "app/lib/voice/useVoiceSession.ts",
+      "purpose": "Hook to orchestrate STT (react-native-voice), TTS (expo-speech), and intent dispatch."
+    },
+    {
+      "path": "app/parent/components/VoiceMicButton.tsx",
+      "purpose": "Hold-to-talk mic UI with visualizer; shows partial transcript and confirmation."
+    },
+    {
+      "path": "functions/src/time/submitRequest.ts",
+      "purpose": "Callable: create timeRequests record if under daily limit; notify parent."
+    },
+    {
+      "path": "functions/src/time/approveRequest.ts",
+      "purpose": "Callable (parent): adjust screenTime; write audit; notify child."
+    },
+    {
+      "path": "functions/src/voice/parseIntent.ts",
+      "purpose": "LLM-backed fallback parser for free-form utterances; returns intent + entities."
+    },
+    {
+      "path": "functions/src/voice/dispatch.ts",
+      "purpose": "Route intents to actions: add_child, assign_chore, show_usage, grant_bonus."
+    },
+    {
+      "path": "functions/src/ai/verifySubmission.ts",
+      "purpose": "Fetch media, compute clutter reduction, write aiVerdict + score."
+    },
+    {
+      "path": "functions/src/screenTime/applyAward.ts",
+      "purpose": "On approved submission, increment next-day budgetMinutes with cap & audit log."
+    },
+    {
+      "path": "functions/src/household/inviteChild.ts",
+      "purpose": "Create one-time child invite + deep link token (dynamic links) and send SMS."
+    }
+  ],
+  "schemas": {
+    "TimeRequest": {
+      "id": "string",
+      "childId": "string",
+      "minutesRequested": "number",
+      "status": "enum:pending|approved|denied|exceeded",
+      "reason": "string|null",
+      "createdAt": "timestamp",
+      "decidedAt": "timestamp|null",
+      "reviewerId": "string|null"
+    },
+    "VoiceSession": {
+      "id": "string",
+      "userId": "string",
+      "transcript": "string",
+      "intent": "enum:add_child|assign_chore|show_usage|grant_bonus|set_budget|pause_time|resume_time",
+      "entities": {
+        "child": "string|null",
+        "phone": "string|null",
+        "minutes": "number|null",
+        "task": "string|null",
+        "timeRange": "string|null",
+        "dueAt": "timestamp|null"
+      },
+      "status": "enum:parsed|executed|failed",
+      "outcome": "string",
+      "createdAt": "timestamp"
+    }
+  },
+  "prompts": [
+    {
+      "role": "architect",
+      "text": "Create the voice module (nlu.ts + useVoiceSession.ts + VoiceMicButton.tsx) with a simple rules grammar for add_child, assign_chore, show_usage, grant_bonus and a fallback Cloud Function."
+    },
+    {
+      "role": "functions",
+      "text": "Implement submitRequest() with 3/day cap per child using Firestore counter doc. Implement approveRequest() that increments today's budgetMinutes immediately and writes events audit. Implement dispatch() with auth/role checks."
+    },
+    {
+      "role": "tests",
+      "text": "Add emulator tests ensuring request cap is enforced; only parents can approve; overlay logic unit tests for policy edge cases (crossing midnight quiet hours)."
+    }
+  ],
+  "acceptance": [
+    "Overlay appears when minutes exhausted or within quiet hours; dialer/SMS are allowed.",
+    "Child can submit up to 3 requests/day; 4th returns 'exceeded'.",
+    "Parent receives push and can approve/deny; on approval, child's budget updates and overlay clears.",
+    "Voice commands: add child, assign chore, show usage, grant bonus all function end-to-end.",
+    "All actions produce audit events."
+  ]
+}

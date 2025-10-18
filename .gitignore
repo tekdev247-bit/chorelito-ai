@@ -1,8 +1,82 @@
-node_modules
-.expo
-dist
-web-build
+# --- Node / Expo / RN ---
+node_modules/
+npm-debug.log*
+yarn.lock.*.backup
+.pnpm-debug.log*
+package-lock.json.*  # keep your main package-lock.json, ignore backups
+
+.expo/
+.expo-shared/
+dist/
+web-build/
+.tmp/
+.temp/
 *.log
-.env*
-android
-ios
+*.pid
+coverage/
+
+# Metro / cache
+.expo-cache/
+.metro-cache/
+.cache/
+*.pack
+
+# OS cruft
+.DS_Store
+Thumbs.db
+
+# --- Environment / secrets ---
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+service-account.json
+google-services.json         # keep ignored unless you explicitly want it versioned
+GoogleService-Info.plist
+
+# --- Android build artifacts ---
+android/.gradle/
+android/.idea/
+android/local.properties
+android/build/
+android/app/build/
+android/app/release/
+android/app/*.keystore
+android/app/*.jks
+*.keystore
+*.jks
+
+# --- iOS (if you add iOS later) ---
+ios/DerivedData/
+ios/build/
+ios/*.mode1v3
+ios/*.mode2v3
+ios/*.perspectivev3
+ios/**/*.xcuserdatad
+ios/.DS_Store
+*.xccheckout
+*.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings
+# CocoaPods (usually KEEP Podfile.lock in git; ignore Pods themselves)
+ios/Pods/
+
+# --- Firebase ---
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+
+# Functions build outputs
+functions/lib/
+functions/node_modules/
+functions/.runtimeconfig.json
+
+# --- Test / emulator data ---
+.emulator/**/*
+firebase-data/**
+
+# --- Editor / tooling ---
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea/

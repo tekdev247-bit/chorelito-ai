@@ -1,0 +1,30 @@
+# Normalize line endings (use LF in repo; Windows will check out as CRLF if core.autocrlf=true)
+* text=auto eol=lf
+
+# Treat common binary assets as binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.svg -text
+*.mp4 binary
+*.mp3 binary
+*.ttf binary
+*.otf binary
+
+# Lockfiles & project files: use union merge to reduce conflicts
+package-lock.json merge=union
+functions/package-lock.json merge=union
+android/**/*.gradle merge=union
+ios/*.pbxproj merge=union
+
+# Improve diffs for TS/JS/JSON
+*.ts  text diff=javascript
+*.tsx text diff=javascript
+*.js  text diff=javascript
+*.jsx text diff=javascript
+*.json text
+*.md  text
+*.yml text
+*.yaml text

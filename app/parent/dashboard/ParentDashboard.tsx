@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Animated, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { ChildManagement } from '../../child/ChildManagement';
 
 // Enhanced theme
 const enhancedTheme = {
@@ -92,9 +93,12 @@ const voiceStyles = StyleSheet.create({
 // Inline AITopTabs component
 const tabs = ['Children', 'Chores', 'Reports', 'AI Settings', 'Help'] as const;
 
-const AITopTabs: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<string>('Children');
+interface AITopTabsProps {
+  activeTab: string;
+  onTabChange: (tab: string) => void;
+}
 
+const AITopTabs: React.FC<AITopTabsProps> = ({ activeTab, onTabChange }) => {
   return (
     <View style={tabStyles.container}>
       <ScrollView 
@@ -105,7 +109,7 @@ const AITopTabs: React.FC = () => {
         {tabs.map((tab) => (
           <TouchableOpacity
             key={tab}
-            onPress={() => setActiveTab(tab)}
+            onPress={() => onTabChange(tab)}
             style={tabStyles.tab}
           >
             {activeTab === tab ? (
@@ -168,11 +172,49 @@ const tabStyles = StyleSheet.create({
 
 export const ParentDashboard: React.FC = () => {
   const [isListening, setIsListening] = useState(false);
+  const [activeTab, setActiveTab] = useState('Children');
 
   const handleVoicePress = () => {
     setIsListening(!isListening);
     // TODO: Wire up actual voice recognition here
     setTimeout(() => setIsListening(false), 3000); // Auto-stop after 3 seconds for demo
+  };
+
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'Children':
+        return <ChildManagement />;
+      case 'Chores':
+        return (
+          <View style={{ padding: 16 }}>
+            <Text style={{ fontSize: 20, color: '#2D3748' }}>Chores coming soon...</Text>
+          </View>
+        );
+      case 'Reports':
+        return (
+          <View style={{ padding: 16 }}>
+            <Text style={{ fontSize: 20, color: '#2D3748' }}>Reports coming soon...</Text>
+          </View>
+        );
+      case 'AI Settings':
+        return (
+          <View style={{ padding: 16 }}>
+            <Text style={{ fontSize: 20, color: '#2D3748' }}>AI Settings coming soon...</Text>
+          </View>
+        );
+      case 'Help':
+        return (
+          <View style={{ padding: 16 }}>
+            <Text style={{ fontSize: 20, color: '#2D3748' }}>Help coming soon...</Text>
+          </View>
+        );
+      default:
+        return (
+          <View style={{ padding: 16 }}>
+            <Text style={{ fontSize: 20, color: '#2D3748' }}>Welcome!</Text>
+          </View>
+        );
+    }
   };
 
   return (
@@ -195,9 +237,14 @@ export const ParentDashboard: React.FC = () => {
       </LinearGradient>
 
       {/* AI Top Tabs Navigation */}
-      <AITopTabs />
+      <AITopTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
-      <ScrollView style={{ flex: 1, padding: 16 }}>
+      {/* Tab Content */}
+      {renderTabContent()}
+
+      {/* Only show voice button and examples on non-Children tabs */}
+      {activeTab !== 'Children' && (
+        <ScrollView style={{ flex: 1, padding: 16 }}>
         <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#2D3748', marginTop: 20 }}>
           Welcome to Chorelito AI!
         </Text>
@@ -241,7 +288,8 @@ export const ParentDashboard: React.FC = () => {
             • "Grant bonus 30 minutes to Liam"
           </Text>
         </View>
-      </ScrollView>
+        </ScrollView>
+      )}
     </View>
   );
 };

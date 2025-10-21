@@ -2,7 +2,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Animated, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ChildManagement } from '../../child/ChildManagement';
 
 // Enhanced theme
 const enhancedTheme = {
@@ -183,7 +182,32 @@ export const ParentDashboard: React.FC = () => {
   const renderTabContent = () => {
     switch (activeTab) {
       case 'Children':
-        return <ChildManagement />;
+        return (
+          <ScrollView style={{ flex: 1, padding: 16 }}>
+            <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#2D3748', marginBottom: 8 }}>
+              Manage Children
+            </Text>
+            <Text style={{ fontSize: 16, color: '#4A5568', marginBottom: 16 }}>
+              Child management interface coming soon...
+            </Text>
+            <View style={{
+              marginTop: 16,
+              backgroundColor: 'rgba(99, 179, 237, 0.1)',
+              padding: 20,
+              borderRadius: 16
+            }}>
+              <Text style={{ fontSize: 16, color: '#2D3748' }}>
+                • Add and edit child profiles
+              </Text>
+              <Text style={{ fontSize: 16, color: '#2D3748', marginTop: 8 }}>
+                • View points and levels
+              </Text>
+              <Text style={{ fontSize: 16, color: '#2D3748', marginTop: 8 }}>
+                • Manage chores assignments
+              </Text>
+            </View>
+          </ScrollView>
+        );
       case 'Chores':
         return (
           <View style={{ padding: 16 }}>

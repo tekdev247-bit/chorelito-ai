@@ -68,24 +68,24 @@ const voiceStyles = StyleSheet.create({
     padding: 20
   },
   button: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    width: 180,
+    height: 180,
+    borderRadius: 90,
     shadowColor: '#63B3ED',
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.4,
-    shadowRadius: 25,
-    elevation: 10
+    shadowOpacity: 0.5,
+    shadowRadius: 30,
+    elevation: 15
   },
   gradient: {
     width: '100%',
     height: '100%',
-    borderRadius: 60,
+    borderRadius: 90,
     alignItems: 'center',
     justifyContent: 'center'
   },
   icon: {
-    fontSize: 48
+    fontSize: 72
   }
 });
 
@@ -209,15 +209,12 @@ export const ParentDashboard: React.FC = () => {
         <View style={{
           marginTop: 24,
           backgroundColor: 'rgba(99, 179, 237, 0.1)',
-          padding: 20,
+          padding: 30,
           borderRadius: 20,
           alignItems: 'center'
         }}>
-          <Text style={{ fontSize: 18, fontWeight: '600', color: '#2D3748', marginBottom: 12 }}>
-            🎤 Voice Commands
-          </Text>
           <VoiceWave onPress={handleVoicePress} isListening={isListening} />
-          <Text style={{ fontSize: 12, color: '#4A5568', marginTop: 12, textAlign: 'center' }}>
+          <Text style={{ fontSize: 12, color: '#4A5568', marginTop: 16, textAlign: 'center' }}>
             {isListening ? 'Listening to your command...' : 'Tap to give a voice command'}
           </Text>
         </View>

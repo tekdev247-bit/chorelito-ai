@@ -1,6 +1,6 @@
 // app/parent/dashboard/ParentDashboard.tsx
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Animated, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Animated, StyleSheet, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 // Enhanced theme
@@ -145,6 +145,42 @@ const ChildrenManagementTab: React.FC = () => {
     { id: '1', name: 'Emma', age: 8, points: 450, level: 3, avatar: '👧' },
     { id: '2', name: 'Liam', age: 6, points: 280, level: 2, avatar: '👦' }
   ]);
+  const [editingChild, setEditingChild] = useState<Child | null>(null);
+  const [showAddChild, setShowAddChild] = useState(false);
+  const [selectedChildChores, setSelectedChildChores] = useState<Child | null>(null);
+
+  const handleEditProfile = (child: Child) => {
+    setEditingChild(child);
+    // TODO: Open edit profile modal/screen
+    Alert.alert(
+      `Edit Profile: ${child.name}`,
+      'Features:\n\n• Change name\n• Update age\n• Change avatar\n• Adjust settings\n• Set screen time limits\n• Configure quiet hours',
+      [{ text: 'OK', onPress: () => setEditingChild(null) }]
+    );
+  };
+
+  const handleViewChores = (child: Child) => {
+    setSelectedChildChores(child);
+    // TODO: Navigate to chores screen or open chores modal
+    Alert.alert(
+      `${child.name}'s Chores`,
+      'Current Chores:\n\n• Clean room (5 points)\n• Do dishes (10 points)\n• Homework (15 points)\n• Take out trash (5 points)\n\nTotal: 35 points available',
+      [
+        { text: 'Assign New Chore', style: 'default' },
+        { text: 'Close', style: 'cancel', onPress: () => setSelectedChildChores(null) }
+      ]
+    );
+  };
+
+  const handleAddNewChild = () => {
+    setShowAddChild(true);
+    // TODO: Open add child form/modal
+    Alert.alert(
+      'Add New Child',
+      'Form Fields:\n\n• Name\n• Age\n• Avatar selection\n• Initial settings\n• Screen time limits\n• Quiet hours\n\nThis will open a full form in the next update!',
+      [{ text: 'Got it', onPress: () => setShowAddChild(false) }]
+    );
+  };
 
   return (
     <ScrollView style={{ flex: 1, padding: 16 }}>
@@ -185,10 +221,16 @@ const ChildrenManagementTab: React.FC = () => {
             </View>
 
             <View style={childCardStyles.actions}>
-              <TouchableOpacity style={childCardStyles.editButton}>
+              <TouchableOpacity 
+                style={childCardStyles.editButton}
+                onPress={() => handleEditProfile(child)}
+              >
                 <Text style={childCardStyles.editButtonText}>Edit Profile</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={childCardStyles.choresButton}>
+              <TouchableOpacity 
+                style={childCardStyles.choresButton}
+                onPress={() => handleViewChores(child)}
+              >
                 <Text style={childCardStyles.choresButtonText}>View Chores</Text>
               </TouchableOpacity>
             </View>
@@ -196,7 +238,10 @@ const ChildrenManagementTab: React.FC = () => {
         </View>
       ))}
 
-      <TouchableOpacity style={childCardStyles.addButton}>
+      <TouchableOpacity 
+        style={childCardStyles.addButton}
+        onPress={handleAddNewChild}
+      >
         <LinearGradient
           colors={enhancedTheme.gradients.primary}
           style={childCardStyles.addButtonGradient}

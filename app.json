@@ -13,10 +13,16 @@
     },
     "android": {
       "package": "com.chorelito.app",
-      "permissions": ["RECORD_AUDIO", "CAMERA","POST_NOTIFICATIONS"],
+      "permissions": ["RECORD_AUDIO", "CAMERA", "POST_NOTIFICATIONS", "MODIFY_AUDIO_SETTINGS"],
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#E8F7FF"
+      }
+    },
+    "ios": {
+      "bundleIdentifier": "com.chorelito.app",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "This app needs microphone access for voice controls to manage chores and screen time."
       }
     },
     "assetBundlePatterns": [

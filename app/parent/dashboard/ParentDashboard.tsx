@@ -1,6 +1,6 @@
 // app/parent/dashboard/ParentDashboard.tsx
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Animated, StyleSheet, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Animated, StyleSheet, Alert, Modal, TextInput } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 // Enhanced theme
@@ -148,39 +148,64 @@ const ChildrenManagementTab: React.FC = () => {
   const [editingChild, setEditingChild] = useState<Child | null>(null);
   const [showAddChild, setShowAddChild] = useState(false);
   const [selectedChildChores, setSelectedChildChores] = useState<Child | null>(null);
+  
+  // Form state
+  const [editName, setEditName] = useState('');
+  const [editAge, setEditAge] = useState('');
+  const [editAvatar, setEditAvatar] = useState('');
+  const [newChildName, setNewChildName] = useState('');
+  const [newChildAge, setNewChildAge] = useState('');
+  const [newChildAvatar, setNewChildAvatar] = useState('👶');
 
   const handleEditProfile = (child: Child) => {
     setEditingChild(child);
-    // TODO: Open edit profile modal/screen
-    Alert.alert(
-      `Edit Profile: ${child.name}`,
-      'Features:\n\n• Change name\n• Update age\n• Change avatar\n• Adjust settings\n• Set screen time limits\n• Configure quiet hours',
-      [{ text: 'OK', onPress: () => setEditingChild(null) }]
-    );
+    setEditName(child.name);
+    setEditAge(child.age.toString());
+    setEditAvatar(child.avatar);
+  };
+
+  const handleSaveProfile = () => {
+    if (editingChild) {
+      setChildren(children.map(c => 
+        c.id === editingChild.id 
+          ? { ...c, name: editName, age: parseInt(editAge) || c.age, avatar: editAvatar }
+          : c
+      ));
+      Alert.alert('Success', `${editName}'s profile has been updated!`);
+      setEditingChild(null);
+    }
   };
 
   const handleViewChores = (child: Child) => {
     setSelectedChildChores(child);
-    // TODO: Navigate to chores screen or open chores modal
-    Alert.alert(
-      `${child.name}'s Chores`,
-      'Current Chores:\n\n• Clean room (5 points)\n• Do dishes (10 points)\n• Homework (15 points)\n• Take out trash (5 points)\n\nTotal: 35 points available',
-      [
-        { text: 'Assign New Chore', style: 'default' },
-        { text: 'Close', style: 'cancel', onPress: () => setSelectedChildChores(null) }
-      ]
-    );
   };
 
   const handleAddNewChild = () => {
     setShowAddChild(true);
-    // TODO: Open add child form/modal
-    Alert.alert(
-      'Add New Child',
-      'Form Fields:\n\n• Name\n• Age\n• Avatar selection\n• Initial settings\n• Screen time limits\n• Quiet hours\n\nThis will open a full form in the next update!',
-      [{ text: 'Got it', onPress: () => setShowAddChild(false) }]
-    );
+    setNewChildName('');
+    setNewChildAge('');
+    setNewChildAvatar('👶');
   };
+
+  const handleSaveNewChild = () => {
+    if (newChildName && newChildAge) {
+      const newChild: Child = {
+        id: (children.length + 1).toString(),
+        name: newChildName,
+        age: parseInt(newChildAge),
+        points: 0,
+        level: 1,
+        avatar: newChildAvatar
+      };
+      setChildren([...children, newChild]);
+      Alert.alert('Success', `${newChildName} has been added!`);
+      setShowAddChild(false);
+    } else {
+      Alert.alert('Error', 'Please fill in all required fields');
+    }
+  };
+
+  const avatarOptions = ['👧', '👦', '👶', '🧒', '👨', '👩', '🧑', '👴', '👵'];
 
   return (
     <ScrollView style={{ flex: 1, padding: 16 }}>
@@ -250,6 +275,218 @@ const ChildrenManagementTab: React.FC = () => {
           <Text style={childCardStyles.addButtonText}>Add New Child</Text>
         </LinearGradient>
       </TouchableOpacity>
+
+      {/* Edit Profile Modal */}
+      <Modal
+        visible={!!editingChild}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setEditingChild(null)}
+      >
+        <View style={modalStyles.overlay}>
+          <View style={modalStyles.modalContainer}>
+            <Text style={modalStyles.modalTitle}>Edit Profile</Text>
+            
+            <Text style={modalStyles.label}>Avatar</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={modalStyles.avatarScroll}>
+              {avatarOptions.map((emoji) => (
+                <TouchableOpacity
+                  key={emoji}
+                  onPress={() => setEditAvatar(emoji)}
+                  style={[
+                    modalStyles.avatarOption,
+                    editAvatar === emoji && modalStyles.avatarOptionSelected
+                  ]}
+                >
+                  <Text style={modalStyles.avatarText}>{emoji}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            <Text style={modalStyles.label}>Name</Text>
+            <TextInput
+              style={modalStyles.input}
+              value={editName}
+              onChangeText={setEditName}
+              placeholder="Enter name"
+              placeholderTextColor="#999"
+            />
+
+            <Text style={modalStyles.label}>Age</Text>
+            <TextInput
+              style={modalStyles.input}
+              value={editAge}
+              onChangeText={setEditAge}
+              placeholder="Enter age"
+              placeholderTextColor="#999"
+              keyboardType="numeric"
+            />
+
+            <View style={modalStyles.buttonRow}>
+              <TouchableOpacity
+                style={[modalStyles.button, modalStyles.cancelButton]}
+                onPress={() => setEditingChild(null)}
+              >
+                <Text style={modalStyles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[modalStyles.button, modalStyles.saveButton]}
+                onPress={handleSaveProfile}
+              >
+                <LinearGradient
+                  colors={enhancedTheme.gradients.primary}
+                  style={modalStyles.saveButtonGradient}
+                >
+                  <Text style={modalStyles.saveButtonText}>Save</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* View Chores Modal */}
+      <Modal
+        visible={!!selectedChildChores}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setSelectedChildChores(null)}
+      >
+        <View style={modalStyles.overlay}>
+          <View style={modalStyles.modalContainer}>
+            <Text style={modalStyles.modalTitle}>{selectedChildChores?.name}'s Chores</Text>
+            
+            <View style={modalStyles.choreList}>
+              <View style={modalStyles.choreItem}>
+                <Text style={modalStyles.choreEmoji}>🧹</Text>
+                <View style={modalStyles.choreInfo}>
+                  <Text style={modalStyles.choreName}>Clean room</Text>
+                  <Text style={modalStyles.chorePoints}>5 points</Text>
+                </View>
+                <View style={modalStyles.choreStatus}>
+                  <Text style={modalStyles.choreStatusText}>✓</Text>
+                </View>
+              </View>
+
+              <View style={modalStyles.choreItem}>
+                <Text style={modalStyles.choreEmoji}>🍽️</Text>
+                <View style={modalStyles.choreInfo}>
+                  <Text style={modalStyles.choreName}>Do dishes</Text>
+                  <Text style={modalStyles.chorePoints}>10 points</Text>
+                </View>
+                <View style={modalStyles.choreStatus}>
+                  <Text style={modalStyles.choreStatusText}>✓</Text>
+                </View>
+              </View>
+
+              <View style={modalStyles.choreItem}>
+                <Text style={modalStyles.choreEmoji}>📚</Text>
+                <View style={modalStyles.choreInfo}>
+                  <Text style={modalStyles.choreName}>Homework</Text>
+                  <Text style={modalStyles.chorePoints}>15 points</Text>
+                </View>
+                <View style={[modalStyles.choreStatus, modalStyles.choreStatusPending]}>
+                  <Text style={modalStyles.choreStatusTextPending}>○</Text>
+                </View>
+              </View>
+
+              <View style={modalStyles.choreItem}>
+                <Text style={modalStyles.choreEmoji}>🗑️</Text>
+                <View style={modalStyles.choreInfo}>
+                  <Text style={modalStyles.choreName}>Take out trash</Text>
+                  <Text style={modalStyles.chorePoints}>5 points</Text>
+                </View>
+                <View style={[modalStyles.choreStatus, modalStyles.choreStatusPending]}>
+                  <Text style={modalStyles.choreStatusTextPending}>○</Text>
+                </View>
+              </View>
+            </View>
+
+            <View style={modalStyles.buttonRow}>
+              <TouchableOpacity
+                style={[modalStyles.button, modalStyles.fullButton]}
+                onPress={() => setSelectedChildChores(null)}
+              >
+                <LinearGradient
+                  colors={enhancedTheme.gradients.primary}
+                  style={modalStyles.saveButtonGradient}
+                >
+                  <Text style={modalStyles.saveButtonText}>Close</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Add New Child Modal */}
+      <Modal
+        visible={showAddChild}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowAddChild(false)}
+      >
+        <View style={modalStyles.overlay}>
+          <View style={modalStyles.modalContainer}>
+            <Text style={modalStyles.modalTitle}>Add New Child</Text>
+            
+            <Text style={modalStyles.label}>Avatar</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={modalStyles.avatarScroll}>
+              {avatarOptions.map((emoji) => (
+                <TouchableOpacity
+                  key={emoji}
+                  onPress={() => setNewChildAvatar(emoji)}
+                  style={[
+                    modalStyles.avatarOption,
+                    newChildAvatar === emoji && modalStyles.avatarOptionSelected
+                  ]}
+                >
+                  <Text style={modalStyles.avatarText}>{emoji}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            <Text style={modalStyles.label}>Name</Text>
+            <TextInput
+              style={modalStyles.input}
+              value={newChildName}
+              onChangeText={setNewChildName}
+              placeholder="Enter name"
+              placeholderTextColor="#999"
+            />
+
+            <Text style={modalStyles.label}>Age</Text>
+            <TextInput
+              style={modalStyles.input}
+              value={newChildAge}
+              onChangeText={setNewChildAge}
+              placeholder="Enter age"
+              placeholderTextColor="#999"
+              keyboardType="numeric"
+            />
+
+            <View style={modalStyles.buttonRow}>
+              <TouchableOpacity
+                style={[modalStyles.button, modalStyles.cancelButton]}
+                onPress={() => setShowAddChild(false)}
+              >
+                <Text style={modalStyles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[modalStyles.button, modalStyles.saveButton]}
+                onPress={handleSaveNewChild}
+              >
+                <LinearGradient
+                  colors={enhancedTheme.gradients.primary}
+                  style={modalStyles.saveButtonGradient}
+                >
+                  <Text style={modalStyles.saveButtonText}>Add Child</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 };
@@ -376,6 +613,163 @@ const childCardStyles = StyleSheet.create({
     fontSize: 16,
     color: '#FFF',
     fontWeight: '600'
+  }
+});
+
+const modalStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20
+  },
+  modalContainer: {
+    backgroundColor: '#FFFDF9',
+    borderRadius: 20,
+    padding: 24,
+    width: '100%',
+    maxHeight: '80%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 10
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#2D3748',
+    marginBottom: 20,
+    textAlign: 'center'
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#4A5568',
+    marginBottom: 8,
+    marginTop: 12
+  },
+  input: {
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 16,
+    color: '#2D3748',
+    borderWidth: 1,
+    borderColor: '#E2E8F0'
+  },
+  avatarScroll: {
+    marginBottom: 12
+  },
+  avatarOption: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: 'rgba(99, 179, 237, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+    borderWidth: 2,
+    borderColor: 'transparent'
+  },
+  avatarOptionSelected: {
+    borderColor: '#63B3ED',
+    backgroundColor: 'rgba(99, 179, 237, 0.2)'
+  },
+  avatarText: {
+    fontSize: 28
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 24
+  },
+  button: {
+    flex: 1,
+    borderRadius: 12,
+    overflow: 'hidden'
+  },
+  fullButton: {
+    flex: 1
+  },
+  cancelButton: {
+    backgroundColor: 'rgba(99, 179, 237, 0.1)',
+    padding: 14,
+    alignItems: 'center',
+    borderRadius: 12
+  },
+  cancelButtonText: {
+    color: '#63B3ED',
+    fontWeight: '600',
+    fontSize: 16
+  },
+  saveButton: {
+    borderRadius: 12,
+    overflow: 'hidden'
+  },
+  saveButtonGradient: {
+    padding: 14,
+    alignItems: 'center',
+    borderRadius: 12
+  },
+  saveButtonText: {
+    color: '#FFF',
+    fontWeight: '600',
+    fontSize: 16
+  },
+  choreList: {
+    marginTop: 12
+  },
+  choreItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0'
+  },
+  choreEmoji: {
+    fontSize: 32,
+    marginRight: 12
+  },
+  choreInfo: {
+    flex: 1
+  },
+  choreName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2D3748'
+  },
+  chorePoints: {
+    fontSize: 14,
+    color: '#4A5568',
+    marginTop: 2
+  },
+  choreStatus: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#8EE3C2',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  choreStatusText: {
+    fontSize: 18,
+    color: '#FFF',
+    fontWeight: 'bold'
+  },
+  choreStatusPending: {
+    backgroundColor: 'rgba(99, 179, 237, 0.1)',
+    borderWidth: 2,
+    borderColor: '#63B3ED'
+  },
+  choreStatusTextPending: {
+    fontSize: 18,
+    color: '#63B3ED',
+    fontWeight: 'bold'
   }
 });
 

@@ -130,6 +130,233 @@ const AITopTabs: React.FC<AITopTabsProps> = ({ activeTab, onTabChange }) => {
   );
 };
 
+// Inline ChoresManagementTab component
+interface Chore {
+  id: string;
+  name: string;
+  points: number;
+  emoji: string;
+  assignedTo: string;
+  completed: boolean;
+}
+
+const ChoresManagementTab: React.FC = () => {
+  const [chores, setChores] = useState<Chore[]>([
+    { id: '1', name: 'Clean room', points: 5, emoji: '🧹', assignedTo: 'Emma', completed: true },
+    { id: '2', name: 'Do dishes', points: 10, emoji: '🍽️', assignedTo: 'Emma', completed: true },
+    { id: '3', name: 'Homework', points: 15, emoji: '📚', assignedTo: 'Liam', completed: false },
+    { id: '4', name: 'Take out trash', points: 5, emoji: '🗑️', assignedTo: 'Liam', completed: false },
+    { id: '5', name: 'Feed pet', points: 10, emoji: '🐶', assignedTo: 'Emma', completed: false },
+  ]);
+  const [showAddChore, setShowAddChore] = useState(false);
+  const [newChoreName, setNewChoreName] = useState('');
+  const [newChorePoints, setNewChorePoints] = useState('');
+  const [newChoreEmoji, setNewChoreEmoji] = useState('🧹');
+  const [newChoreAssignedTo, setNewChoreAssignedTo] = useState('Emma');
+
+  const choreEmojis = ['🧹', '🍽️', '📚', '🗑️', '🐶', '🌱', '🧺', '🚗', '🛏️', '🍳'];
+  const childNames = ['Emma', 'Liam', 'Unassigned'];
+
+  const toggleChoreCompletion = (choreId: string) => {
+    setChores(chores.map(c => 
+      c.id === choreId ? { ...c, completed: !c.completed } : c
+    ));
+  };
+
+  const handleAddChore = () => {
+    if (newChoreName && newChorePoints) {
+      const newChore: Chore = {
+        id: (chores.length + 1).toString(),
+        name: newChoreName,
+        points: parseInt(newChorePoints),
+        emoji: newChoreEmoji,
+        assignedTo: newChoreAssignedTo,
+        completed: false
+      };
+      setChores([...chores, newChore]);
+      Alert.alert('Success', `${newChoreName} has been added!`);
+      setShowAddChore(false);
+      setNewChoreName('');
+      setNewChorePoints('');
+    } else {
+      Alert.alert('Error', 'Please fill in all required fields');
+    }
+  };
+
+  return (
+    <ScrollView style={{ flex: 1, padding: 16 }}>
+      <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#2D3748', marginBottom: 8 }}>
+        Manage Chores
+      </Text>
+      <Text style={{ fontSize: 16, color: '#4A5568', marginBottom: 16 }}>
+        Assign and track chores for your children
+      </Text>
+
+      {chores.map((chore) => (
+        <TouchableOpacity
+          key={chore.id}
+          onPress={() => toggleChoreCompletion(chore.id)}
+          style={[
+            childCardStyles.childCard,
+            { opacity: chore.completed ? 0.7 : 1 }
+          ]}
+        >
+          <LinearGradient
+            colors={chore.completed 
+              ? ['rgba(142, 227, 194, 0.2)', 'rgba(142, 227, 194, 0.1)']
+              : ['rgba(255, 255, 255, 0.95)', 'rgba(255, 255, 255, 0.85)']
+            }
+            style={childCardStyles.cardGradient}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Text style={{ fontSize: 40, marginRight: 16 }}>{chore.emoji}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ 
+                  fontSize: 18, 
+                  fontWeight: 'bold', 
+                  color: '#2D3748',
+                  textDecorationLine: chore.completed ? 'line-through' : 'none'
+                }}>
+                  {chore.name}
+                </Text>
+                <Text style={{ fontSize: 14, color: '#4A5568', marginTop: 4 }}>
+                  Assigned to: {chore.assignedTo}
+                </Text>
+                <Text style={{ fontSize: 12, color: '#63B3ED', marginTop: 2 }}>
+                  {chore.points} points
+                </Text>
+              </View>
+              <View style={[
+                childCardStyles.levelBadge,
+                { 
+                  backgroundColor: chore.completed ? '#8EE3C2' : 'rgba(99, 179, 237, 0.2)',
+                  width: 36,
+                  height: 36,
+                  paddingHorizontal: 0
+                }
+              ]}>
+                <Text style={{ fontSize: 20 }}>
+                  {chore.completed ? '✓' : '○'}
+                </Text>
+              </View>
+            </View>
+          </LinearGradient>
+        </TouchableOpacity>
+      ))}
+
+      <TouchableOpacity 
+        style={childCardStyles.addButton}
+        onPress={() => setShowAddChore(true)}
+      >
+        <LinearGradient
+          colors={enhancedTheme.gradients.primary}
+          style={childCardStyles.addButtonGradient}
+        >
+          <Text style={childCardStyles.addButtonIcon}>+</Text>
+          <Text style={childCardStyles.addButtonText}>Add New Chore</Text>
+        </LinearGradient>
+      </TouchableOpacity>
+
+      {/* Add Chore Modal */}
+      <Modal
+        visible={showAddChore}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowAddChore(false)}
+      >
+        <View style={modalStyles.overlay}>
+          <View style={modalStyles.modalContainer}>
+            <Text style={modalStyles.modalTitle}>Add New Chore</Text>
+            
+            <Text style={modalStyles.label}>Chore Icon</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={modalStyles.avatarScroll}>
+              {choreEmojis.map((emoji) => (
+                <TouchableOpacity
+                  key={emoji}
+                  onPress={() => setNewChoreEmoji(emoji)}
+                  style={[
+                    modalStyles.avatarOption,
+                    newChoreEmoji === emoji && modalStyles.avatarOptionSelected
+                  ]}
+                >
+                  <Text style={modalStyles.avatarText}>{emoji}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            <Text style={modalStyles.label}>Chore Name</Text>
+            <TextInput
+              style={modalStyles.input}
+              value={newChoreName}
+              onChangeText={setNewChoreName}
+              placeholder="Enter chore name"
+              placeholderTextColor="#999"
+            />
+
+            <Text style={modalStyles.label}>Points</Text>
+            <TextInput
+              style={modalStyles.input}
+              value={newChorePoints}
+              onChangeText={setNewChorePoints}
+              placeholder="Enter points value"
+              placeholderTextColor="#999"
+              keyboardType="numeric"
+            />
+
+            <Text style={modalStyles.label}>Assign To</Text>
+            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+              {childNames.map((name) => (
+                <TouchableOpacity
+                  key={name}
+                  onPress={() => setNewChoreAssignedTo(name)}
+                  style={[
+                    {
+                      flex: 1,
+                      padding: 12,
+                      borderRadius: 12,
+                      alignItems: 'center',
+                      backgroundColor: newChoreAssignedTo === name 
+                        ? '#63B3ED' 
+                        : 'rgba(99, 179, 237, 0.1)'
+                    }
+                  ]}
+                >
+                  <Text style={{ 
+                    fontWeight: '600',
+                    color: newChoreAssignedTo === name ? '#FFF' : '#63B3ED'
+                  }}>
+                    {name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <View style={modalStyles.buttonRow}>
+              <TouchableOpacity
+                style={[modalStyles.button, modalStyles.cancelButton]}
+                onPress={() => setShowAddChore(false)}
+              >
+                <Text style={modalStyles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[modalStyles.button, modalStyles.saveButton]}
+                onPress={handleAddChore}
+              >
+                <LinearGradient
+                  colors={enhancedTheme.gradients.primary}
+                  style={modalStyles.saveButtonGradient}
+                >
+                  <Text style={modalStyles.saveButtonText}>Add Chore</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </ScrollView>
+  );
+};
+
 // Inline ChildrenManagementTab component
 interface Child {
   id: string;
@@ -827,11 +1054,7 @@ export const ParentDashboard: React.FC = () => {
       case 'Children':
         return <ChildrenManagementTab />;
       case 'Chores':
-        return (
-          <View style={{ padding: 16 }}>
-            <Text style={{ fontSize: 20, color: '#2D3748' }}>Chores coming soon...</Text>
-          </View>
-        );
+        return <ChoresManagementTab />;
       case 'Reports':
         return (
           <View style={{ padding: 16 }}>
@@ -884,8 +1107,8 @@ export const ParentDashboard: React.FC = () => {
       {/* Tab Content */}
       {renderTabContent()}
 
-      {/* Only show voice button and examples on non-Children tabs */}
-      {activeTab !== 'Children' && (
+      {/* Only show voice button and examples on non-Children and non-Chores tabs */}
+      {activeTab !== 'Children' && activeTab !== 'Chores' && (
         <ScrollView style={{ flex: 1, padding: 16 }}>
         <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#2D3748', marginTop: 20 }}>
           Welcome to Chorelito AI!

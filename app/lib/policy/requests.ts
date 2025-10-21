@@ -1,4 +1,5 @@
-import { httpsCallable, getFunctions } from 'firebase/functions';
+import { httpsCallable } from 'firebase/functions';
+import { functions } from '../firebase';
 
 export type TimeRequestStatus = 'pending' | 'approved' | 'denied' | 'exceeded';
 
@@ -36,7 +37,6 @@ export type ApproveRequestResponse = {
   error?: string;
 };
 
-const functions = getFunctions();
 
 export async function submitTimeRequest(data: SubmitRequestData): Promise<SubmitRequestResponse> {
   try {

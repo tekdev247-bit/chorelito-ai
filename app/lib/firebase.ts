@@ -2,17 +2,20 @@ import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
+import { getFunctions } from 'firebase/functions';
 
 const firebaseConfig = {
-  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID
+  apiKey: "AIzaSyCbeZVhlESwO8m1Vo1-vWj9NCbavowBxu4",
+  authDomain: "chorelito-ai.firebaseapp.com",
+  projectId: "chorelito-ai",
+  storageBucket: "chorelito-ai.firebasestorage.app",
+  messagingSenderId: "575480892777",
+  appId: "1:575480892777:web:176dda4eb1d50332a4c1f8",
+  measurementId: "G-R0XQ411RTT"
 };
 
-const app = initializeApp(firebaseConfig as any);
+const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
+export const functions = getFunctions(app);

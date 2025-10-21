@@ -21,6 +21,7 @@
     },
     "assetBundlePatterns": [
       "**/*"
-    ]
+    ],
+    "sdkVersion": "52.0.0"
   }
 }

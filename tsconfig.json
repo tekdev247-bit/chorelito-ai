@@ -15,5 +15,6 @@
         "app/lib/*"
       ]
     }
-  }
+  },
+  "extends": "expo/tsconfig.base"
 }

@@ -130,6 +130,210 @@ const AITopTabs: React.FC<AITopTabsProps> = ({ activeTab, onTabChange }) => {
   );
 };
 
+// Inline ChildrenManagementTab component
+interface Child {
+  id: string;
+  name: string;
+  age: number;
+  points: number;
+  level: number;
+  avatar: string;
+}
+
+const ChildrenManagementTab: React.FC = () => {
+  const [children, setChildren] = useState<Child[]>([
+    { id: '1', name: 'Emma', age: 8, points: 450, level: 3, avatar: '👧' },
+    { id: '2', name: 'Liam', age: 6, points: 280, level: 2, avatar: '👦' }
+  ]);
+
+  return (
+    <ScrollView style={{ flex: 1, padding: 16 }}>
+      <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#2D3748', marginBottom: 8 }}>
+        Manage Children
+      </Text>
+      <Text style={{ fontSize: 16, color: '#4A5568', marginBottom: 16 }}>
+        Edit profiles and view progress
+      </Text>
+
+      {children.map((child) => (
+        <View key={child.id} style={childCardStyles.childCard}>
+          <LinearGradient
+            colors={['rgba(255, 255, 255, 0.95)', 'rgba(255, 255, 255, 0.85)']}
+            style={childCardStyles.cardGradient}
+          >
+            <View style={childCardStyles.childHeader}>
+              <Text style={childCardStyles.avatar}>{child.avatar}</Text>
+              <View style={childCardStyles.childInfo}>
+                <Text style={childCardStyles.childName}>{child.name}</Text>
+                <Text style={childCardStyles.childAge}>Age {child.age}</Text>
+              </View>
+              <View style={childCardStyles.levelBadge}>
+                <Text style={childCardStyles.levelText}>Lvl {child.level}</Text>
+              </View>
+            </View>
+
+            <View style={childCardStyles.stats}>
+              <View style={childCardStyles.stat}>
+                <Text style={childCardStyles.statValue}>{child.points}</Text>
+                <Text style={childCardStyles.statLabel}>Points</Text>
+              </View>
+              <View style={childCardStyles.divider} />
+              <View style={childCardStyles.stat}>
+                <Text style={childCardStyles.statValue}>85%</Text>
+                <Text style={childCardStyles.statLabel}>Completed</Text>
+              </View>
+            </View>
+
+            <View style={childCardStyles.actions}>
+              <TouchableOpacity style={childCardStyles.editButton}>
+                <Text style={childCardStyles.editButtonText}>Edit Profile</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={childCardStyles.choresButton}>
+                <Text style={childCardStyles.choresButtonText}>View Chores</Text>
+              </TouchableOpacity>
+            </View>
+          </LinearGradient>
+        </View>
+      ))}
+
+      <TouchableOpacity style={childCardStyles.addButton}>
+        <LinearGradient
+          colors={enhancedTheme.gradients.primary}
+          style={childCardStyles.addButtonGradient}
+        >
+          <Text style={childCardStyles.addButtonIcon}>+</Text>
+          <Text style={childCardStyles.addButtonText}>Add New Child</Text>
+        </LinearGradient>
+      </TouchableOpacity>
+    </ScrollView>
+  );
+};
+
+const childCardStyles = StyleSheet.create({
+  childCard: {
+    marginBottom: 16,
+    borderRadius: 20,
+    shadowColor: '#63B3ED',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 3
+  },
+  cardGradient: {
+    padding: 16,
+    borderRadius: 20
+  },
+  childHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12
+  },
+  avatar: {
+    fontSize: 32,
+    marginRight: 12
+  },
+  childInfo: {
+    flex: 1
+  },
+  childName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#2D3748'
+  },
+  childAge: {
+    fontSize: 14,
+    color: '#4A5568'
+  },
+  levelBadge: {
+    backgroundColor: '#8EE3C2',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12
+  },
+  levelText: {
+    color: '#0C1B2A',
+    fontWeight: '600',
+    fontSize: 12
+  },
+  stats: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 16,
+    padding: 12,
+    backgroundColor: 'rgba(99, 179, 237, 0.1)',
+    borderRadius: 12
+  },
+  stat: {
+    alignItems: 'center'
+  },
+  statValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#2D3748'
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#4A5568',
+    marginTop: 2
+  },
+  divider: {
+    width: 1,
+    backgroundColor: '#E2E8F0'
+  },
+  actions: {
+    flexDirection: 'row',
+    gap: 8
+  },
+  editButton: {
+    flex: 1,
+    padding: 12,
+    backgroundColor: 'rgba(99, 179, 237, 0.1)',
+    borderRadius: 12,
+    alignItems: 'center'
+  },
+  editButtonText: {
+    color: '#63B3ED',
+    fontWeight: '600'
+  },
+  choresButton: {
+    flex: 1,
+    padding: 12,
+    backgroundColor: '#63B3ED',
+    borderRadius: 12,
+    alignItems: 'center'
+  },
+  choresButtonText: {
+    color: '#FFF',
+    fontWeight: '600'
+  },
+  addButton: {
+    marginTop: 8,
+    borderRadius: 20,
+    shadowColor: '#63B3ED',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 3
+  },
+  addButtonGradient: {
+    padding: 16,
+    borderRadius: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  addButtonIcon: {
+    fontSize: 20,
+    color: '#FFF',
+    marginRight: 8
+  },
+  addButtonText: {
+    fontSize: 16,
+    color: '#FFF',
+    fontWeight: '600'
+  }
+});
+
 const tabStyles = StyleSheet.create({
   container: {
     backgroundColor: '#FFF',
@@ -182,32 +386,7 @@ export const ParentDashboard: React.FC = () => {
   const renderTabContent = () => {
     switch (activeTab) {
       case 'Children':
-        return (
-          <ScrollView style={{ flex: 1, padding: 16 }}>
-            <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#2D3748', marginBottom: 8 }}>
-              Manage Children
-            </Text>
-            <Text style={{ fontSize: 16, color: '#4A5568', marginBottom: 16 }}>
-              Child management interface coming soon...
-            </Text>
-            <View style={{
-              marginTop: 16,
-              backgroundColor: 'rgba(99, 179, 237, 0.1)',
-              padding: 20,
-              borderRadius: 16
-            }}>
-              <Text style={{ fontSize: 16, color: '#2D3748' }}>
-                • Add and edit child profiles
-              </Text>
-              <Text style={{ fontSize: 16, color: '#2D3748', marginTop: 8 }}>
-                • View points and levels
-              </Text>
-              <Text style={{ fontSize: 16, color: '#2D3748', marginTop: 8 }}>
-                • Manage chores assignments
-              </Text>
-            </View>
-          </ScrollView>
-        );
+        return <ChildrenManagementTab />;
       case 'Chores':
         return (
           <View style={{ padding: 16 }}>

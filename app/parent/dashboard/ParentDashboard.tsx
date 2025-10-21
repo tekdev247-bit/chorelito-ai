@@ -148,22 +148,55 @@ const ChoresManagementTab: React.FC = () => {
     { id: '4', name: 'Take out trash', points: 5, emoji: '🗑️', assignedTo: 'Liam', completed: false },
     { id: '5', name: 'Feed pet', points: 10, emoji: '🐶', assignedTo: 'Emma', completed: false },
   ]);
-  const [showAddChore, setShowAddChore] = useState(false);
+  
+  // Modal states
+  const [showAssignChore, setShowAssignChore] = useState(false);
+  const [showEditChore, setShowEditChore] = useState(false);
+  const [showNewChore, setShowNewChore] = useState(false);
+  
+  // Form states
+  const [selectedChore, setSelectedChore] = useState<Chore | null>(null);
   const [newChoreName, setNewChoreName] = useState('');
   const [newChorePoints, setNewChorePoints] = useState('');
   const [newChoreEmoji, setNewChoreEmoji] = useState('🧹');
   const [newChoreAssignedTo, setNewChoreAssignedTo] = useState('Emma');
+  const [aiManaged, setAiManaged] = useState(false);
 
   const choreEmojis = ['🧹', '🍽️', '📚', '🗑️', '🐶', '🌱', '🧺', '🚗', '🛏️', '🍳'];
   const childNames = ['Emma', 'Liam', 'Unassigned'];
 
-  const toggleChoreCompletion = (choreId: string) => {
-    setChores(chores.map(c => 
-      c.id === choreId ? { ...c, completed: !c.completed } : c
-    ));
+  const handleAssignChore = () => {
+    if (selectedChore && newChoreAssignedTo) {
+      setChores(chores.map(c =>
+        c.id === selectedChore.id
+          ? { ...c, assignedTo: newChoreAssignedTo }
+          : c
+      ));
+      Alert.alert('Success', `${selectedChore.name} has been assigned to ${newChoreAssignedTo}!`);
+      setShowAssignChore(false);
+      setSelectedChore(null);
+      setNewChoreAssignedTo('Emma');
+    }
   };
 
-  const handleAddChore = () => {
+  const handleEditChore = () => {
+    if (selectedChore && newChoreName && newChorePoints) {
+      setChores(chores.map(c =>
+        c.id === selectedChore.id
+          ? { ...c, name: newChoreName, points: parseInt(newChorePoints), emoji: newChoreEmoji }
+          : c
+      ));
+      Alert.alert('Success', `${newChoreName} has been updated!`);
+      setShowEditChore(false);
+      setSelectedChore(null);
+      setNewChoreName('');
+      setNewChorePoints('');
+      setNewChoreEmoji('🧹');
+      setAiManaged(false);
+    }
+  };
+
+  const handleNewChore = () => {
     if (newChoreName && newChorePoints) {
       const newChore: Chore = {
         id: (chores.length + 1).toString(),
@@ -175,12 +208,49 @@ const ChoresManagementTab: React.FC = () => {
       };
       setChores([...chores, newChore]);
       Alert.alert('Success', `${newChoreName} has been added!`);
-      setShowAddChore(false);
+      setShowNewChore(false);
       setNewChoreName('');
       setNewChorePoints('');
+      setNewChoreEmoji('🧹');
+      setNewChoreAssignedTo('Emma');
     } else {
       Alert.alert('Error', 'Please fill in all required fields');
     }
+  };
+
+  const openAssignChore = () => {
+    setSelectedChore(null);
+    setNewChoreAssignedTo('Emma');
+    setShowAssignChore(true);
+  };
+
+  const openEditChore = () => {
+    setSelectedChore(null);
+    setNewChoreName('');
+    setNewChorePoints('');
+    setNewChoreEmoji('🧹');
+    setAiManaged(false);
+    setShowEditChore(true);
+  };
+
+  const openNewChore = () => {
+    setNewChoreName('');
+    setNewChorePoints('');
+    setNewChoreEmoji('🧹');
+    setNewChoreAssignedTo('Emma');
+    setShowNewChore(true);
+  };
+
+  const selectChoreForAssignment = (chore: Chore) => {
+    setSelectedChore(chore);
+    setNewChoreAssignedTo(chore.assignedTo);
+  };
+
+  const selectChoreForEdit = (chore: Chore) => {
+    setSelectedChore(chore);
+    setNewChoreName(chore.name);
+    setNewChorePoints(chore.points.toString());
+    setNewChoreEmoji(chore.emoji);
   };
 
   return (
@@ -188,101 +258,324 @@ const ChoresManagementTab: React.FC = () => {
       <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#2D3748', marginBottom: 8 }}>
         Manage Chores
       </Text>
-      <Text style={{ fontSize: 16, color: '#4A5568', marginBottom: 16 }}>
+      <Text style={{ fontSize: 16, color: '#4A5568', marginBottom: 24 }}>
         Assign and track chores for your children
       </Text>
 
-      {chores.map((chore) => (
+      {/* Three Action Buttons */}
+      <View style={{ flexDirection: 'row', gap: 12, marginBottom: 24 }}>
         <TouchableOpacity
-          key={chore.id}
-          onPress={() => toggleChoreCompletion(chore.id)}
-          style={[
-            childCardStyles.childCard,
-            { opacity: chore.completed ? 0.7 : 1 }
-          ]}
+          style={{
+            flex: 1,
+            padding: 16,
+            backgroundColor: '#63B3ED',
+            borderRadius: 12,
+            alignItems: 'center'
+          }}
+          onPress={openAssignChore}
         >
-          <LinearGradient
-            colors={chore.completed 
-              ? ['rgba(142, 227, 194, 0.2)', 'rgba(142, 227, 194, 0.1)']
-              : ['rgba(255, 255, 255, 0.95)', 'rgba(255, 255, 255, 0.85)']
-            }
-            style={childCardStyles.cardGradient}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Text style={{ fontSize: 40, marginRight: 16 }}>{chore.emoji}</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={{ 
-                  fontSize: 18, 
-                  fontWeight: 'bold', 
-                  color: '#2D3748',
-                  textDecorationLine: chore.completed ? 'line-through' : 'none'
-                }}>
-                  {chore.name}
-                </Text>
-                <Text style={{ fontSize: 14, color: '#4A5568', marginTop: 4 }}>
-                  Assigned to: {chore.assignedTo}
-                </Text>
-                <Text style={{ fontSize: 12, color: '#63B3ED', marginTop: 2 }}>
-                  {chore.points} points
-                </Text>
-              </View>
-              <View style={[
-                childCardStyles.levelBadge,
-                { 
-                  backgroundColor: chore.completed ? '#8EE3C2' : 'rgba(99, 179, 237, 0.2)',
-                  width: 36,
-                  height: 36,
-                  paddingHorizontal: 0
-                }
-              ]}>
-                <Text style={{ fontSize: 20 }}>
-                  {chore.completed ? '✓' : '○'}
-                </Text>
-              </View>
-            </View>
-          </LinearGradient>
+          <Text style={{ color: '#FFF', fontWeight: '600', fontSize: 14 }}>Assign Chore</Text>
         </TouchableOpacity>
-      ))}
 
-      <TouchableOpacity 
-        style={childCardStyles.addButton}
-        onPress={() => setShowAddChore(true)}
-      >
-        <LinearGradient
-          colors={enhancedTheme.gradients.primary}
-          style={childCardStyles.addButtonGradient}
+        <TouchableOpacity
+          style={{
+            flex: 1,
+            padding: 16,
+            backgroundColor: '#FF8C82',
+            borderRadius: 12,
+            alignItems: 'center'
+          }}
+          onPress={openEditChore}
         >
-          <Text style={childCardStyles.addButtonIcon}>+</Text>
-          <Text style={childCardStyles.addButtonText}>Add New Chore</Text>
-        </LinearGradient>
-      </TouchableOpacity>
+          <Text style={{ color: '#FFF', fontWeight: '600', fontSize: 14 }}>Edit Chore</Text>
+        </TouchableOpacity>
 
-      {/* Add Chore Modal */}
+        <TouchableOpacity
+          style={{
+            flex: 1,
+            padding: 16,
+            backgroundColor: '#8EE3C2',
+            borderRadius: 12,
+            alignItems: 'center'
+          }}
+          onPress={openNewChore}
+        >
+          <Text style={{ color: '#0C1B2A', fontWeight: '600', fontSize: 14 }}>New Chore</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Assign Chore Modal */}
       <Modal
-        visible={showAddChore}
+        visible={showAssignChore}
         animationType="slide"
         transparent={true}
-        onRequestClose={() => setShowAddChore(false)}
+        onRequestClose={() => setShowAssignChore(false)}
       >
         <View style={modalStyles.overlay}>
           <View style={modalStyles.modalContainer}>
-            <Text style={modalStyles.modalTitle}>Add New Chore</Text>
+            <Text style={modalStyles.modalTitle}>Assign Chore</Text>
             
-            <Text style={modalStyles.label}>Chore Icon</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={modalStyles.avatarScroll}>
-              {choreEmojis.map((emoji) => (
+            <Text style={modalStyles.label}>Select Chore</Text>
+            <ScrollView style={{ maxHeight: 200, marginBottom: 16 }}>
+              {chores.map((chore) => (
                 <TouchableOpacity
-                  key={emoji}
-                  onPress={() => setNewChoreEmoji(emoji)}
+                  key={chore.id}
+                  onPress={() => selectChoreForAssignment(chore)}
                   style={[
-                    modalStyles.avatarOption,
-                    newChoreEmoji === emoji && modalStyles.avatarOptionSelected
+                    {
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      padding: 12,
+                      borderRadius: 12,
+                      marginBottom: 8,
+                      backgroundColor: selectedChore?.id === chore.id 
+                        ? 'rgba(99, 179, 237, 0.2)' 
+                        : 'rgba(99, 179, 237, 0.05)',
+                      borderWidth: 2,
+                      borderColor: selectedChore?.id === chore.id ? '#63B3ED' : 'transparent'
+                    }
                   ]}
                 >
-                  <Text style={modalStyles.avatarText}>{emoji}</Text>
+                  <Text style={{ fontSize: 24, marginRight: 12 }}>{chore.emoji}</Text>
+                  <Text style={{ flex: 1, fontSize: 16, fontWeight: '600', color: '#2D3748' }}>
+                    {chore.name}
+                  </Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
+
+            {selectedChore && (
+              <>
+                <Text style={modalStyles.label}>Chore Name</Text>
+                <View style={[modalStyles.input, { backgroundColor: '#F7FAFC' }]}>
+                  <Text style={{ color: '#2D3748' }}>{selectedChore.name}</Text>
+                </View>
+
+                <Text style={modalStyles.label}>Points</Text>
+                <View style={[modalStyles.input, { backgroundColor: '#F7FAFC' }]}>
+                  <Text style={{ color: '#2D3748' }}>{selectedChore.points}</Text>
+                </View>
+
+                <Text style={modalStyles.label}>Assign To</Text>
+                <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+                  {childNames.map((name) => (
+                    <TouchableOpacity
+                      key={name}
+                      onPress={() => setNewChoreAssignedTo(name)}
+                      style={{
+                        flex: 1,
+                        padding: 12,
+                        borderRadius: 12,
+                        alignItems: 'center',
+                        backgroundColor: newChoreAssignedTo === name 
+                          ? '#63B3ED' 
+                          : 'rgba(99, 179, 237, 0.1)'
+                      }}
+                    >
+                      <Text style={{ 
+                        fontWeight: '600',
+                        color: newChoreAssignedTo === name ? '#FFF' : '#63B3ED'
+                      }}>
+                        {name}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                <View style={modalStyles.buttonRow}>
+                  <TouchableOpacity
+                    style={[modalStyles.button, modalStyles.cancelButton]}
+                    onPress={() => setShowAssignChore(false)}
+                  >
+                    <Text style={modalStyles.cancelButtonText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[modalStyles.button, modalStyles.saveButton]}
+                    onPress={handleAssignChore}
+                  >
+                    <LinearGradient
+                      colors={enhancedTheme.gradients.primary}
+                      style={modalStyles.saveButtonGradient}
+                    >
+                      <Text style={modalStyles.saveButtonText}>Save</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Edit Chore Modal */}
+      <Modal
+        visible={showEditChore}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowEditChore(false)}
+      >
+        <View style={modalStyles.overlay}>
+          <View style={modalStyles.modalContainer}>
+            <Text style={modalStyles.modalTitle}>Edit Chore</Text>
+            
+            <Text style={modalStyles.label}>Select Chore</Text>
+            <ScrollView style={{ maxHeight: 200, marginBottom: 16 }}>
+              {chores.map((chore) => (
+                <TouchableOpacity
+                  key={chore.id}
+                  onPress={() => selectChoreForEdit(chore)}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    padding: 12,
+                    borderRadius: 12,
+                    marginBottom: 8,
+                    backgroundColor: selectedChore?.id === chore.id 
+                      ? 'rgba(99, 179, 237, 0.2)' 
+                      : 'rgba(99, 179, 237, 0.05)',
+                    borderWidth: 2,
+                    borderColor: selectedChore?.id === chore.id ? '#63B3ED' : 'transparent'
+                  }}
+                >
+                  <Text style={{ fontSize: 24, marginRight: 12 }}>{chore.emoji}</Text>
+                  <Text style={{ flex: 1, fontSize: 16, fontWeight: '600', color: '#2D3748' }}>
+                    {chore.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            {selectedChore && (
+              <>
+                <Text style={modalStyles.label}>Chore Icon</Text>
+                <View style={{ marginBottom: 12 }}>
+                  <ScrollView 
+                    horizontal 
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ paddingVertical: 8 }}
+                  >
+                    {choreEmojis.map((emoji) => (
+                      <TouchableOpacity
+                        key={emoji}
+                        onPress={() => setNewChoreEmoji(emoji)}
+                        style={[
+                          modalStyles.avatarOption,
+                          newChoreEmoji === emoji && modalStyles.avatarOptionSelected,
+                          { marginRight: 8 }
+                        ]}
+                      >
+                        <Text style={modalStyles.avatarText}>{emoji}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+
+                <Text style={modalStyles.label}>Chore Name</Text>
+                <TextInput
+                  style={modalStyles.input}
+                  value={newChoreName}
+                  onChangeText={setNewChoreName}
+                  placeholder="Enter chore name"
+                  placeholderTextColor="#999"
+                />
+
+                <Text style={modalStyles.label}>Points</Text>
+                <TextInput
+                  style={modalStyles.input}
+                  value={newChorePoints}
+                  onChangeText={setNewChorePoints}
+                  placeholder="Enter points value"
+                  placeholderTextColor="#999"
+                  keyboardType="numeric"
+                />
+
+                <TouchableOpacity
+                  onPress={() => setAiManaged(!aiManaged)}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    padding: 12,
+                    backgroundColor: 'rgba(99, 179, 237, 0.1)',
+                    borderRadius: 12,
+                    marginBottom: 12
+                  }}
+                >
+                  <View style={{
+                    width: 24,
+                    height: 24,
+                    borderRadius: 12,
+                    borderWidth: 2,
+                    borderColor: '#63B3ED',
+                    backgroundColor: aiManaged ? '#63B3ED' : 'transparent',
+                    marginRight: 12,
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    {aiManaged && <Text style={{ color: '#FFF', fontSize: 16 }}>✓</Text>}
+                  </View>
+                  <Text style={{ flex: 1, color: '#2D3748', fontWeight: '600' }}>
+                    Managed by AI
+                  </Text>
+                </TouchableOpacity>
+
+                <View style={modalStyles.buttonRow}>
+                  <TouchableOpacity
+                    style={[modalStyles.button, modalStyles.cancelButton]}
+                    onPress={() => setShowEditChore(false)}
+                  >
+                    <Text style={modalStyles.cancelButtonText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[modalStyles.button, modalStyles.saveButton]}
+                    onPress={handleEditChore}
+                  >
+                    <LinearGradient
+                      colors={enhancedTheme.gradients.primary}
+                      style={modalStyles.saveButtonGradient}
+                    >
+                      <Text style={modalStyles.saveButtonText}>Save</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* New Chore Modal */}
+      <Modal
+        visible={showNewChore}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowNewChore(false)}
+      >
+        <View style={modalStyles.overlay}>
+          <View style={modalStyles.modalContainer}>
+            <Text style={modalStyles.modalTitle}>New Chore</Text>
+            
+            <Text style={modalStyles.label}>Chore Icon</Text>
+            <View style={{ marginBottom: 12 }}>
+              <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ paddingVertical: 8 }}
+              >
+                {choreEmojis.map((emoji) => (
+                  <TouchableOpacity
+                    key={emoji}
+                    onPress={() => setNewChoreEmoji(emoji)}
+                    style={[
+                      modalStyles.avatarOption,
+                      newChoreEmoji === emoji && modalStyles.avatarOptionSelected,
+                      { marginRight: 8 }
+                    ]}
+                  >
+                    <Text style={modalStyles.avatarText}>{emoji}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
 
             <Text style={modalStyles.label}>Chore Name</Text>
             <TextInput
@@ -309,17 +602,15 @@ const ChoresManagementTab: React.FC = () => {
                 <TouchableOpacity
                   key={name}
                   onPress={() => setNewChoreAssignedTo(name)}
-                  style={[
-                    {
-                      flex: 1,
-                      padding: 12,
-                      borderRadius: 12,
-                      alignItems: 'center',
-                      backgroundColor: newChoreAssignedTo === name 
-                        ? '#63B3ED' 
-                        : 'rgba(99, 179, 237, 0.1)'
-                    }
-                  ]}
+                  style={{
+                    flex: 1,
+                    padding: 12,
+                    borderRadius: 12,
+                    alignItems: 'center',
+                    backgroundColor: newChoreAssignedTo === name 
+                      ? '#63B3ED' 
+                      : 'rgba(99, 179, 237, 0.1)'
+                  }}
                 >
                   <Text style={{ 
                     fontWeight: '600',
@@ -334,19 +625,19 @@ const ChoresManagementTab: React.FC = () => {
             <View style={modalStyles.buttonRow}>
               <TouchableOpacity
                 style={[modalStyles.button, modalStyles.cancelButton]}
-                onPress={() => setShowAddChore(false)}
+                onPress={() => setShowNewChore(false)}
               >
                 <Text style={modalStyles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[modalStyles.button, modalStyles.saveButton]}
-                onPress={handleAddChore}
+                onPress={handleNewChore}
               >
                 <LinearGradient
                   colors={enhancedTheme.gradients.primary}
                   style={modalStyles.saveButtonGradient}
                 >
-                  <Text style={modalStyles.saveButtonText}>Add Chore</Text>
+                  <Text style={modalStyles.saveButtonText}>Save</Text>
                 </LinearGradient>
               </TouchableOpacity>
             </View>

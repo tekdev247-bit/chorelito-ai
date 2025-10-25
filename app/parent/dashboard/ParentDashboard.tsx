@@ -68,9 +68,9 @@ const voiceStyles = StyleSheet.create({
     padding: 20
   },
   button: {
-    width: 180,
-    height: 180,
-    borderRadius: 90,
+    width: 200,
+    height: 200,
+    borderRadius: 100,
     shadowColor: '#63B3ED',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.5,
@@ -80,17 +80,17 @@ const voiceStyles = StyleSheet.create({
   gradient: {
     width: '100%',
     height: '100%',
-    borderRadius: 90,
+    borderRadius: 100,
     alignItems: 'center',
     justifyContent: 'center'
   },
   icon: {
-    fontSize: 72
+    fontSize: 80
   }
 });
 
 // Inline AITopTabs component
-const tabs = ['Children', 'Chores', 'Reports', 'AI Settings', 'Help'] as const;
+const tabs = ['Home', 'Children', 'Chores', 'Reports', 'Settings', 'Help'] as const;
 
 interface AITopTabsProps {
   activeTab: string;
@@ -145,6 +145,646 @@ const HomeButton: React.FC<{ onPress: () => void }> = ({ onPress }) => {
         <Text style={homeButtonStyles.text}>Home</Text>
       </LinearGradient>
     </TouchableOpacity>
+  );
+};
+
+// Settings Tab Component
+const SettingsTab: React.FC<{ onHomePress: () => void }> = ({ onHomePress }) => {
+  const [parentName, setParentName] = useState('Sarah Johnson');
+  const [parentPhone, setParentPhone] = useState('+1 (555) 123-4567');
+  const [parentAvatar, setParentAvatar] = useState('👩');
+  const [defaultDailyLimit, setDefaultDailyLimit] = useState('120');
+  const [quietHoursStart, setQuietHoursStart] = useState('07:00');
+  const [quietHoursEnd, setQuietHoursEnd] = useState('21:00');
+  const [maxRequests, setMaxRequests] = useState('3');
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [timePickerType, setTimePickerType] = useState<'start' | 'end'>('start');
+  const [selectedHour, setSelectedHour] = useState(7);
+  const [selectedMinute, setSelectedMinute] = useState(0);
+  const [showCreditsModal, setShowCreditsModal] = useState(false);
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
+
+  const openTimePicker = (type: 'start' | 'end') => {
+    setTimePickerType(type);
+    setShowTimePicker(true);
+    
+    const currentTime = type === 'start' ? quietHoursStart : quietHoursEnd;
+    const [hour, minute] = currentTime.split(':').map(Number);
+    setSelectedHour(hour);
+    setSelectedMinute(minute);
+  };
+
+  const confirmTimeSelection = () => {
+    const timeString = `${selectedHour.toString().padStart(2, '0')}:${selectedMinute.toString().padStart(2, '0')}`;
+    
+    if (timePickerType === 'start') {
+      setQuietHoursStart(timeString);
+    } else {
+      setQuietHoursEnd(timeString);
+    }
+    
+    setShowTimePicker(false);
+  };
+
+  return (
+    <ScrollView style={{ flex: 1, backgroundColor: '#FFFDF9' }}>
+      <View style={{ padding: 16, paddingBottom: 8 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#2D3748' }}>
+            Settings
+          </Text>
+          <HomeButton onPress={onHomePress} />
+        </View>
+      </View>
+
+      <View style={{ padding: 16 }}>
+        {/* 1. Account & Security */}
+        <View style={settingsStyles.section}>
+          <Text style={settingsStyles.sectionTitle}>👤 Account & Security</Text>
+          
+          <View style={settingsStyles.settingItem}>
+            <Text style={settingsStyles.settingLabel}>Parent Name</Text>
+            <TextInput
+              style={settingsStyles.settingInput}
+              value={parentName}
+              onChangeText={setParentName}
+              placeholder="Enter parent name"
+            />
+          </View>
+
+          <View style={settingsStyles.settingItem}>
+            <Text style={settingsStyles.settingLabel}>Parent Phone</Text>
+            <TextInput
+              style={settingsStyles.settingInput}
+              value={parentPhone}
+              onChangeText={setParentPhone}
+              placeholder="Enter phone number"
+              keyboardType="phone-pad"
+            />
+          </View>
+
+          <View style={settingsStyles.settingItem}>
+            <Text style={settingsStyles.settingLabel}>Parent Avatar</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={settingsStyles.avatarScroll}>
+              {['👩', '👨', '🧑', '👵', '👴'].map((emoji) => (
+                <TouchableOpacity
+                  key={emoji}
+                  onPress={() => setParentAvatar(emoji)}
+                  style={[
+                    settingsStyles.avatarOption,
+                    parentAvatar === emoji && settingsStyles.avatarOptionSelected
+                  ]}
+                >
+                  <Text style={settingsStyles.avatarText}>{emoji}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+
+          <TouchableOpacity style={settingsStyles.actionButton}>
+            <Text style={settingsStyles.actionButtonText}>Change Password</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={[settingsStyles.actionButton, settingsStyles.logoutButton]}>
+            <Text style={[settingsStyles.actionButtonText, settingsStyles.logoutButtonText]}>Logout</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* 2. Screen-Time Policy */}
+        <View style={settingsStyles.section}>
+          <Text style={settingsStyles.sectionTitle}>⏰ Screen-Time Policy</Text>
+          
+          <View style={settingsStyles.settingItem}>
+            <Text style={settingsStyles.settingLabel}>Default Daily Limit (minutes)</Text>
+            <TextInput
+              style={settingsStyles.settingInput}
+              value={defaultDailyLimit}
+              onChangeText={setDefaultDailyLimit}
+              placeholder="120"
+              keyboardType="numeric"
+            />
+          </View>
+
+          <View style={settingsStyles.settingItem}>
+            <Text style={settingsStyles.settingLabel}>Quiet Hours Start</Text>
+            <View style={settingsStyles.timeInputContainer}>
+              <TextInput
+                style={[settingsStyles.settingInput, settingsStyles.timeInput]}
+                value={quietHoursStart}
+                onChangeText={setQuietHoursStart}
+                placeholder="07:00"
+                keyboardType="numeric"
+              />
+              <TouchableOpacity 
+                style={settingsStyles.clockButton}
+                onPress={() => openTimePicker('start')}
+              >
+                <Text style={settingsStyles.clockIcon}>🕐</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View style={settingsStyles.settingItem}>
+            <Text style={settingsStyles.settingLabel}>Quiet Hours End</Text>
+            <View style={settingsStyles.timeInputContainer}>
+              <TextInput
+                style={[settingsStyles.settingInput, settingsStyles.timeInput]}
+                value={quietHoursEnd}
+                onChangeText={setQuietHoursEnd}
+                placeholder="21:00"
+                keyboardType="numeric"
+              />
+              <TouchableOpacity 
+                style={settingsStyles.clockButton}
+                onPress={() => openTimePicker('end')}
+              >
+                <Text style={settingsStyles.clockIcon}>🕐</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View style={settingsStyles.settingItem}>
+            <Text style={settingsStyles.settingLabel}>Max "Request More Time" per day</Text>
+            <TextInput
+              style={settingsStyles.settingInput}
+              value={maxRequests}
+              onChangeText={setMaxRequests}
+              placeholder="3"
+              keyboardType="numeric"
+            />
+          </View>
+
+          <View style={settingsStyles.settingItem}>
+            <Text style={settingsStyles.settingLabel}>Preset Increments</Text>
+            <View style={settingsStyles.incrementContainer}>
+              <TouchableOpacity style={settingsStyles.incrementButton}>
+                <Text style={settingsStyles.incrementText}>+5 min</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={settingsStyles.incrementButton}>
+                <Text style={settingsStyles.incrementText}>+10 min</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={settingsStyles.incrementButton}>
+                <Text style={settingsStyles.incrementText}>+15 min</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+
+        {/* 3. Data & Privacy */}
+        <View style={settingsStyles.section}>
+          <Text style={settingsStyles.sectionTitle}>🔒 Data & Privacy</Text>
+          
+          <TouchableOpacity style={settingsStyles.actionButton}>
+            <Text style={settingsStyles.actionButtonText}>Export Data (CSV)</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={settingsStyles.actionButton}>
+            <Text style={settingsStyles.actionButtonText}>Export Data (JSON)</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={[settingsStyles.actionButton, settingsStyles.dangerButton]}>
+            <Text style={[settingsStyles.actionButtonText, settingsStyles.dangerButtonText]}>Delete Household Data</Text>
+          </TouchableOpacity>
+
+          <View style={settingsStyles.settingItem}>
+            <Text style={settingsStyles.settingLabel}>Camera Permission</Text>
+            <Text style={settingsStyles.permissionStatus}>✅ Granted</Text>
+          </View>
+
+          <View style={settingsStyles.settingItem}>
+            <Text style={settingsStyles.settingLabel}>Microphone Permission</Text>
+            <Text style={settingsStyles.permissionStatus}>✅ Granted</Text>
+          </View>
+
+          <TouchableOpacity 
+            style={settingsStyles.actionButton}
+            onPress={() => setShowPrivacyModal(true)}
+          >
+            <Text style={settingsStyles.actionButtonText}>Privacy Policy</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={settingsStyles.actionButton}
+            onPress={() => setShowTermsModal(true)}
+          >
+            <Text style={settingsStyles.actionButtonText}>Terms of Service</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* 4. About */}
+        <View style={settingsStyles.section}>
+          <Text style={settingsStyles.sectionTitle}>ℹ️ About</Text>
+          
+          <View style={settingsStyles.settingItem}>
+            <Text style={settingsStyles.settingLabel}>Version</Text>
+            <Text style={settingsStyles.settingValue}>1.0.0</Text>
+          </View>
+
+          <TouchableOpacity style={settingsStyles.actionButton}>
+            <Text style={settingsStyles.actionButtonText}>Check for Updates</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={settingsStyles.actionButton}
+            onPress={() => setShowCreditsModal(true)}
+          >
+            <Text style={settingsStyles.actionButtonText}>Credits & Acknowledgments</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[settingsStyles.actionButton, settingsStyles.supportButton]}
+            onPress={onHomePress}
+          >
+            <Text style={[settingsStyles.actionButtonText, settingsStyles.supportButtonText]}>Contact Support</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Time Picker Modal */}
+      <Modal
+        visible={showTimePicker}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowTimePicker(false)}
+      >
+        <View style={modalStyles.overlay}>
+          <View style={modalStyles.modalContainer}>
+            <Text style={modalStyles.modalTitle}>Select Time</Text>
+            
+            <View style={modalStyles.timePickerContainer}>
+              <View style={modalStyles.timePickerColumn}>
+                <Text style={modalStyles.timePickerLabel}>Hour</Text>
+                <ScrollView style={modalStyles.timePickerScroll} showsVerticalScrollIndicator={false}>
+                  {Array.from({ length: 24 }, (_, i) => (
+                    <TouchableOpacity
+                      key={i}
+                      style={[
+                        modalStyles.timePickerOption,
+                        selectedHour === i && modalStyles.timePickerOptionSelected
+                      ]}
+                      onPress={() => setSelectedHour(i)}
+                    >
+                      <Text style={[
+                        modalStyles.timePickerText,
+                        selectedHour === i && modalStyles.timePickerTextSelected
+                      ]}>
+                        {i.toString().padStart(2, '0')}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+              
+              <View style={modalStyles.timePickerColumn}>
+                <Text style={modalStyles.timePickerLabel}>Minute</Text>
+                <ScrollView style={modalStyles.timePickerScroll} showsVerticalScrollIndicator={false}>
+                  {Array.from({ length: 60 }, (_, i) => (
+                    <TouchableOpacity
+                      key={i}
+                      style={[
+                        modalStyles.timePickerOption,
+                        selectedMinute === i && modalStyles.timePickerOptionSelected
+                      ]}
+                      onPress={() => setSelectedMinute(i)}
+                    >
+                      <Text style={[
+                        modalStyles.timePickerText,
+                        selectedMinute === i && modalStyles.timePickerTextSelected
+                      ]}>
+                        {i.toString().padStart(2, '0')}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            </View>
+
+            <View style={modalStyles.buttonRow}>
+              <TouchableOpacity
+                style={[modalStyles.button, modalStyles.cancelButton]}
+                onPress={() => setShowTimePicker(false)}
+              >
+                <Text style={modalStyles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[modalStyles.button, modalStyles.saveButton]}
+                onPress={confirmTimeSelection}
+              >
+                <LinearGradient
+                  colors={enhancedTheme.gradients.primary}
+                  style={modalStyles.saveButtonGradient}
+                >
+                  <Text style={modalStyles.saveButtonText}>Confirm</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Credits Modal */}
+      <Modal
+        visible={showCreditsModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowCreditsModal(false)}
+      >
+        <View style={modalStyles.overlay}>
+          <View style={modalStyles.modalContainer}>
+            <View style={modalStyles.modalHeader}>
+              <Text style={modalStyles.modalTitle}>Credits & Acknowledgments</Text>
+              <TouchableOpacity
+                style={modalStyles.closeButton}
+                onPress={() => setShowCreditsModal(false)}
+              >
+                <Text style={modalStyles.closeButtonText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            
+            <View style={creditsStyles.content}>
+              <Text style={creditsStyles.company}>Owned by Tek-247</Text>
+              <Text style={creditsStyles.address}>33-9 Robbins Rd #937</Text>
+              <Text style={creditsStyles.address}>Springfield, IL</Text>
+              
+              <View style={creditsStyles.divider} />
+              
+              <Text style={creditsStyles.sectionTitle}>Developed By:</Text>
+              <Text style={creditsStyles.developer}>Terrence Wright & Cursor AI</Text>
+              
+              <View style={creditsStyles.divider} />
+              
+              <Text style={creditsStyles.purpose}>
+                This app was developed to help parents and children manage screen time and fight screen addiction. 
+                Our mission is to create a healthier digital environment for families through AI-powered parenting assistance.
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              style={[modalStyles.button, modalStyles.saveButton]}
+              onPress={() => setShowCreditsModal(false)}
+            >
+              <LinearGradient
+                colors={enhancedTheme.gradients.primary}
+                style={modalStyles.saveButtonGradient}
+              >
+                <Text style={modalStyles.saveButtonText}>Close</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Privacy Policy Modal */}
+      <Modal
+        visible={showPrivacyModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowPrivacyModal(false)}
+      >
+        <View style={modalStyles.overlay}>
+          <View style={modalStyles.modalContainer}>
+            <View style={modalStyles.modalHeader}>
+              <Text style={modalStyles.modalTitle}>Privacy Policy</Text>
+              <TouchableOpacity
+                style={modalStyles.closeButton}
+                onPress={() => setShowPrivacyModal(false)}
+              >
+                <Text style={modalStyles.closeButtonText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView style={legalStyles.scrollContent}>
+              <Text style={legalStyles.sectionTitle}>1. Information We Collect</Text>
+              <Text style={legalStyles.text}>
+                We collect information you provide directly to us, such as when you create an account, 
+                add children to your household, or use our voice commands. This includes:
+              </Text>
+              <Text style={legalStyles.bullet}>• Parent and child names, ages, and avatars</Text>
+              <Text style={legalStyles.bullet}>• Screen time preferences and limits</Text>
+              <Text style={legalStyles.bullet}>• Voice command data (processed locally)</Text>
+              <Text style={legalStyles.bullet}>• Usage analytics to improve our service</Text>
+
+              <Text style={legalStyles.sectionTitle}>2. How We Use Your Information</Text>
+              <Text style={legalStyles.text}>
+                We use the information we collect to:
+              </Text>
+              <Text style={legalStyles.bullet}>• Provide and maintain our parenting assistance services</Text>
+              <Text style={legalStyles.bullet}>• Track and manage screen time for your children</Text>
+              <Text style={legalStyles.bullet}>• Generate reports and analytics</Text>
+              <Text style={legalStyles.bullet}>• Improve our AI-powered features</Text>
+
+              <Text style={legalStyles.sectionTitle}>3. Data Security</Text>
+              <Text style={legalStyles.text}>
+                We implement industry-standard security measures to protect your family's data. 
+                All data is encrypted in transit and at rest. We never sell your personal information 
+                to third parties.
+              </Text>
+
+              <Text style={legalStyles.sectionTitle}>4. Children's Privacy</Text>
+              <Text style={legalStyles.text}>
+                We are committed to protecting children's privacy. We only collect the minimum 
+                information necessary to provide our services and never share children's data 
+                with third parties without explicit parental consent.
+              </Text>
+
+              <Text style={legalStyles.sectionTitle}>5. Your Rights</Text>
+              <Text style={legalStyles.text}>
+                You have the right to access, update, or delete your family's data at any time. 
+                You can export your data or request complete deletion through the app settings.
+              </Text>
+
+              <Text style={legalStyles.sectionTitle}>6. Contact Us</Text>
+              <Text style={legalStyles.text}>
+                If you have questions about this Privacy Policy, please contact us at 
+                support@chorelito.com
+              </Text>
+
+              <Text style={legalStyles.lastUpdated}>
+                Last updated: January 2025
+              </Text>
+            </ScrollView>
+
+            <TouchableOpacity
+              style={[modalStyles.button, modalStyles.saveButton]}
+              onPress={() => setShowPrivacyModal(false)}
+            >
+              <LinearGradient
+                colors={enhancedTheme.gradients.primary}
+                style={modalStyles.saveButtonGradient}
+              >
+                <Text style={modalStyles.saveButtonText}>Close</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Terms of Service Modal */}
+      <Modal
+        visible={showTermsModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowTermsModal(false)}
+      >
+        <View style={modalStyles.overlay}>
+          <View style={modalStyles.modalContainer}>
+            <View style={modalStyles.modalHeader}>
+              <Text style={modalStyles.modalTitle}>Terms of Service</Text>
+              <TouchableOpacity
+                style={modalStyles.closeButton}
+                onPress={() => setShowTermsModal(false)}
+              >
+                <Text style={modalStyles.closeButtonText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView style={legalStyles.scrollContent}>
+              <Text style={legalStyles.sectionTitle}>1. Acceptance of Terms</Text>
+              <Text style={legalStyles.text}>
+                By using Chorelito AI, you agree to be bound by these Terms of Service. 
+                If you do not agree to these terms, please do not use our service.
+              </Text>
+
+              <Text style={legalStyles.sectionTitle}>2. Description of Service</Text>
+              <Text style={legalStyles.text}>
+                Chorelito AI is an AI-powered parenting assistant that helps families manage 
+                screen time, track chores, and promote healthy digital habits. Our service 
+                includes voice commands, progress tracking, and family management tools.
+              </Text>
+
+              <Text style={legalStyles.sectionTitle}>3. User Responsibilities</Text>
+              <Text style={legalStyles.text}>
+                As a user, you agree to:
+              </Text>
+              <Text style={legalStyles.bullet}>• Provide accurate information about your family</Text>
+              <Text style={legalStyles.bullet}>• Use the service responsibly and in accordance with these terms</Text>
+              <Text style={legalStyles.bullet}>• Respect your children's privacy and well-being</Text>
+              <Text style={legalStyles.bullet}>• Not misuse the AI features or attempt to circumvent safety measures</Text>
+
+              <Text style={legalStyles.sectionTitle}>4. Prohibited Uses</Text>
+              <Text style={legalStyles.text}>
+                You may not use our service to:
+              </Text>
+              <Text style={legalStyles.bullet}>• Harm or exploit children in any way</Text>
+              <Text style={legalStyles.bullet}>• Share inappropriate content</Text>
+              <Text style={legalStyles.bullet}>• Attempt to reverse engineer our AI systems</Text>
+              <Text style={legalStyles.bullet}>• Use the service for any illegal activities</Text>
+
+              <Text style={legalStyles.sectionTitle}>5. AI and Voice Features</Text>
+              <Text style={legalStyles.text}>
+                Our AI features are designed to assist with parenting tasks. While we strive 
+                for accuracy, AI-generated suggestions should be reviewed by parents before 
+                implementation. Voice data is processed locally and not stored on our servers.
+              </Text>
+
+              <Text style={legalStyles.sectionTitle}>6. Limitation of Liability</Text>
+              <Text style={legalStyles.text}>
+                Chorelito AI is provided "as is" without warranties. We are not liable for 
+                any damages arising from the use of our service. Parents remain responsible 
+                for their children's safety and well-being.
+              </Text>
+
+              <Text style={legalStyles.sectionTitle}>7. Termination</Text>
+              <Text style={legalStyles.text}>
+                We may terminate or suspend your account at any time for violation of these 
+                terms. You may delete your account and data at any time through the app settings.
+              </Text>
+
+              <Text style={legalStyles.sectionTitle}>8. Changes to Terms</Text>
+              <Text style={legalStyles.text}>
+                We may update these terms from time to time. Continued use of the service 
+                constitutes acceptance of any changes.
+              </Text>
+
+              <Text style={legalStyles.sectionTitle}>9. Contact Information</Text>
+              <Text style={legalStyles.text}>
+                For questions about these Terms of Service, contact us at support@chorelito.com
+              </Text>
+
+              <Text style={legalStyles.lastUpdated}>
+                Last updated: January 2025
+              </Text>
+            </ScrollView>
+
+            <TouchableOpacity
+              style={[modalStyles.button, modalStyles.saveButton]}
+              onPress={() => setShowTermsModal(false)}
+            >
+              <LinearGradient
+                colors={enhancedTheme.gradients.primary}
+                style={modalStyles.saveButtonGradient}
+              >
+                <Text style={modalStyles.saveButtonText}>Close</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </ScrollView>
+  );
+};
+
+// Home Tab Component
+const HomeTab: React.FC = () => {
+  const [isListening, setIsListening] = useState(false);
+
+  const handleVoicePress = () => {
+    setIsListening(!isListening);
+    // TODO: Wire up actual voice recognition here
+    setTimeout(() => setIsListening(false), 3000); // Auto-stop after 3 seconds for demo
+  };
+
+  return (
+    <ScrollView style={{ flex: 1, backgroundColor: '#FFFDF9' }}>
+      <View style={{ padding: 16 }}>
+        <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#2D3748', marginBottom: 24, textAlign: 'center' }}>
+          Welcome to your AI powered parenting assistance
+        </Text>
+
+        {/* Voice Command Button */}
+        <View style={voiceStyles.container}>
+          <VoiceWave onPress={handleVoicePress} isListening={isListening} />
+          <Text style={{ fontSize: 14, fontWeight: '500', color: '#718096', marginTop: 16, textAlign: 'center' }}>
+            Tap to give voice command
+          </Text>
+        </View>
+
+        {/* Voice Commands List */}
+        <View style={{ marginTop: 32 }}>
+          <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#2D3748', marginBottom: 16, textAlign: 'center' }}>
+            🎤 Voice Commands
+          </Text>
+          
+          <View style={voiceCommandStyles.container}>
+            <View style={voiceCommandStyles.commandItem}>
+              <Text style={voiceCommandStyles.commandIcon}>👶</Text>
+              <Text style={voiceCommandStyles.commandText}>"Add a new child"</Text>
+            </View>
+            
+            <View style={voiceCommandStyles.commandItem}>
+              <Text style={voiceCommandStyles.commandIcon}>🧹</Text>
+              <Text style={voiceCommandStyles.commandText}>"Create a new chore"</Text>
+            </View>
+            
+            <View style={voiceCommandStyles.commandItem}>
+              <Text style={voiceCommandStyles.commandIcon}>📊</Text>
+              <Text style={voiceCommandStyles.commandText}>"Show me reports"</Text>
+            </View>
+            
+            <View style={voiceCommandStyles.commandItem}>
+              <Text style={voiceCommandStyles.commandIcon}>⚙️</Text>
+              <Text style={voiceCommandStyles.commandText}>"Open settings"</Text>
+            </View>
+            
+            <View style={voiceCommandStyles.commandItem}>
+              <Text style={voiceCommandStyles.commandIcon}>❓</Text>
+              <Text style={voiceCommandStyles.commandText}>"I need help"</Text>
+            </View>
+          </View>
+        </View>
+      </View>
+    </ScrollView>
   );
 };
 
@@ -804,13 +1444,12 @@ const HelpTab: React.FC<{ onHomePress: () => void }> = ({ onHomePress }) => {
       <View style={{ padding: 16, paddingBottom: 8 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#2D3748' }}>
-            Help & Support
+            Need Help?
           </Text>
           <HomeButton onPress={onHomePress} />
         </View>
       </View>
       <View style={helpStyles.container}>
-        <Text style={helpStyles.title}>Need Help?</Text>
         <Text style={helpStyles.subtitle}>
           Send us a message and we'll get back to you within 48 hours
         </Text>
@@ -1849,12 +2488,33 @@ const modalStyles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 10
   },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
   modalTitle: {
     fontSize: 24,
     fontWeight: 'bold',
     color: '#2D3748',
-    marginBottom: 20,
-    textAlign: 'center'
+    flex: 1,
+    textAlign: 'center',
+  },
+  closeButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F7FAFC',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  closeButtonText: {
+    fontSize: 16,
+    color: '#718096',
+    fontWeight: 'bold',
   },
   label: {
     fontSize: 14,
@@ -2083,6 +2743,256 @@ const homeButtonStyles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 14
   }
+});
+
+const voiceCommandStyles = StyleSheet.create({
+  container: {
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4
+  },
+  commandItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0'
+  },
+  commandIcon: {
+    fontSize: 20,
+    marginRight: 12,
+    width: 30
+  },
+  commandText: {
+    fontSize: 16,
+    color: '#2D3748',
+    fontWeight: '500'
+  }
+});
+
+const settingsStyles = StyleSheet.create({
+  section: {
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#2D3748',
+    marginBottom: 16
+  },
+  settingItem: {
+    marginBottom: 16
+  },
+  settingLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2D3748',
+    marginBottom: 8
+  },
+  settingInput: {
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    backgroundColor: '#F7FAFC'
+  },
+  settingValue: {
+    fontSize: 16,
+    color: '#4A5568',
+    fontWeight: '500'
+  },
+  avatarScroll: {
+    marginBottom: 8
+  },
+  avatarOption: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#F7FAFC',
+    borderWidth: 2,
+    borderColor: '#E2E8F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12
+  },
+  avatarOptionSelected: {
+    borderColor: '#63B3ED',
+    backgroundColor: 'rgba(99, 179, 237, 0.1)'
+  },
+  avatarText: {
+    fontSize: 24
+  },
+  actionButton: {
+    backgroundColor: '#63B3ED',
+    borderRadius: 8,
+    padding: 12,
+    alignItems: 'center',
+    marginBottom: 8
+  },
+  actionButtonText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '600'
+  },
+  logoutButton: {
+    backgroundColor: '#E53E3E'
+  },
+  logoutButtonText: {
+    color: '#FFF'
+  },
+  dangerButton: {
+    backgroundColor: '#E53E3E'
+  },
+  dangerButtonText: {
+    color: '#FFF'
+  },
+  supportButton: {
+    backgroundColor: '#38A169'
+  },
+  supportButtonText: {
+    color: '#FFF'
+  },
+  timeInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
+  timeInput: {
+    flex: 1,
+    marginRight: 8
+  },
+  clockButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(99, 179, 237, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#63B3ED'
+  },
+  clockIcon: {
+    fontSize: 20
+  },
+  incrementContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between'
+  },
+  incrementButton: {
+    backgroundColor: '#F7FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 8,
+    padding: 8,
+    flex: 1,
+    marginHorizontal: 4,
+    alignItems: 'center'
+  },
+  incrementText: {
+    fontSize: 14,
+    color: '#2D3748',
+    fontWeight: '500'
+  },
+  permissionStatus: {
+    fontSize: 16,
+    color: '#38A169',
+    fontWeight: '500'
+  }
+});
+
+// Credits Modal Styles
+const creditsStyles = StyleSheet.create({
+  content: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  company: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#2D3748',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  address: {
+    fontSize: 16,
+    color: '#718096',
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#E2E8F0',
+    width: '100%',
+    marginVertical: 20,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#2D3748',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  developer: {
+    fontSize: 16,
+    color: '#4A5568',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  purpose: {
+    fontSize: 14,
+    color: '#718096',
+    lineHeight: 20,
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+});
+
+// Legal Document Styles
+const legalStyles = StyleSheet.create({
+  scrollContent: {
+    maxHeight: 400,
+    paddingHorizontal: 20,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#2D3748',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  text: {
+    fontSize: 14,
+    color: '#4A5568',
+    lineHeight: 20,
+    marginBottom: 8,
+  },
+  bullet: {
+    fontSize: 14,
+    color: '#4A5568',
+    lineHeight: 20,
+    marginLeft: 16,
+    marginBottom: 4,
+  },
+  lastUpdated: {
+    fontSize: 12,
+    color: '#718096',
+    fontStyle: 'italic',
+    marginTop: 16,
+    textAlign: 'center',
+  },
 });
 
 const tabStyles = StyleSheet.create({
@@ -2483,7 +3393,7 @@ const helpStyles = StyleSheet.create({
 
 export const ParentDashboard: React.FC = () => {
   const [isListening, setIsListening] = useState(false);
-  const [activeTab, setActiveTab] = useState('Children');
+  const [activeTab, setActiveTab] = useState('Home');
 
   const handleVoicePress = () => {
     setIsListening(!isListening);
@@ -2492,23 +3402,21 @@ export const ParentDashboard: React.FC = () => {
   };
 
   const handleHomePress = () => {
-    setActiveTab('AI Settings'); // Navigate to home screen (AI Settings tab)
+    setActiveTab('Home'); // Navigate to home screen with voice command button
   };
 
   const renderTabContent = () => {
     switch (activeTab) {
+      case 'Home':
+        return <HomeTab />;
       case 'Children':
         return <ChildrenManagementTab onHomePress={handleHomePress} />;
       case 'Chores':
         return <ChoresManagementTab onHomePress={handleHomePress} />;
       case 'Reports':
         return <ReportsTab onHomePress={handleHomePress} />;
-      case 'AI Settings':
-        return (
-          <View style={{ padding: 16 }}>
-            <Text style={{ fontSize: 20, color: '#2D3748' }}>AI Settings coming soon...</Text>
-          </View>
-        );
+      case 'Settings':
+        return <SettingsTab onHomePress={handleHomePress} />;
       case 'Help':
         return <HelpTab onHomePress={handleHomePress} />;
       default:
@@ -2545,54 +3453,6 @@ export const ParentDashboard: React.FC = () => {
       {/* Tab Content */}
       {renderTabContent()}
 
-      {/* Only show voice button and examples on non-Children, non-Chores, non-Reports, and non-Help tabs */}
-      {activeTab !== 'Children' && activeTab !== 'Chores' && activeTab !== 'Reports' && activeTab !== 'Help' && (
-        <ScrollView style={{ flex: 1, padding: 16 }}>
-        <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#2D3748', marginTop: 20 }}>
-          Welcome to Chorelito AI!
-        </Text>
-        <Text style={{ fontSize: 16, color: '#4A5568', marginTop: 12 }}>
-          Your AI-powered parenting assistant
-        </Text>
-
-        {/* Voice Control with Pulsating Button */}
-        <View style={{
-          marginTop: 24,
-          backgroundColor: 'rgba(99, 179, 237, 0.1)',
-          padding: 30,
-          borderRadius: 20,
-          alignItems: 'center'
-        }}>
-          <VoiceWave onPress={handleVoicePress} isListening={isListening} />
-          <Text style={{ fontSize: 12, color: '#4A5568', marginTop: 16, textAlign: 'center' }}>
-            {isListening ? 'Listening to your command...' : 'Tap to give a voice command'}
-          </Text>
-        </View>
-        
-        <View style={{
-          marginTop: 24,
-          backgroundColor: 'rgba(99, 179, 237, 0.1)',
-          padding: 20,
-          borderRadius: 16
-        }}>
-          <Text style={{ fontSize: 18, fontWeight: '600', color: '#2D3748', marginBottom: 8 }}>
-            💬 Voice Commands:
-          </Text>
-          <Text style={{ fontSize: 14, color: '#4A5568', marginTop: 4 }}>
-            • "Add child Emma"
-          </Text>
-          <Text style={{ fontSize: 14, color: '#4A5568', marginTop: 4 }}>
-            • "Assign chore dishes to Sarah"
-          </Text>
-          <Text style={{ fontSize: 14, color: '#4A5568', marginTop: 4 }}>
-            • "Show usage for Emma"
-          </Text>
-          <Text style={{ fontSize: 14, color: '#4A5568', marginTop: 4 }}>
-            • "Grant bonus 30 minutes to Liam"
-          </Text>
-        </View>
-        </ScrollView>
-      )}
     </View>
   );
 };

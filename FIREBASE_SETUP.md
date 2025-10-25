@@ -1,9 +1,11 @@
 # Firebase Setup Guide for Chorelito AI
 
 ## 🎯 Overview
+
 This guide will help you complete the Firebase setup so voice commands work in the app.
 
 ## ✅ What's Already Done
+
 - ✅ Firebase config added to `app/lib/firebase.ts`
 - ✅ Firebase Functions written and compiled
 - ✅ Firestore security rules created
@@ -15,7 +17,9 @@ This guide will help you complete the Firebase setup so voice commands work in t
 ## 📋 What You Need to Do
 
 ### Step 1: Login to Firebase
+
 Open a **new terminal** (not in Cursor) and run:
+
 ```bash
 firebase login
 ```
@@ -23,7 +27,9 @@ firebase login
 This will open a browser window. Sign in with your Google account that has access to the `chorelito-ai` Firebase project.
 
 ### Step 2: Verify Project Connection
+
 After logging in, verify the project is connected:
+
 ```bash
 cd c:\Users\Twrig\chorelito-ai
 firebase projects:list
@@ -32,12 +38,15 @@ firebase projects:list
 You should see `chorelito-ai` in the list.
 
 ### Step 3: Deploy Firebase Functions
+
 Deploy the voice command functions to Firebase:
+
 ```bash
 firebase deploy --only functions
 ```
 
 This will deploy:
+
 - `voice-dispatch` - Handles voice command execution
 - `voice-parseIntent` - Parses voice commands using NLU
 - `submitRequest` - Handles screen time requests
@@ -51,25 +60,33 @@ This will deploy:
 - `acceptInvite` - Accepts child invitations
 
 ### Step 4: Deploy Firestore Rules
+
 Deploy the security rules:
+
 ```bash
 firebase deploy --only firestore:rules
 ```
 
 ### Step 5: Deploy Firestore Indexes
+
 Deploy the database indexes:
+
 ```bash
 firebase deploy --only firestore:indexes
 ```
 
 ### Step 6: Deploy Storage Rules
+
 Deploy the storage security rules:
+
 ```bash
 firebase deploy --only storage
 ```
 
 ### Step 7: Enable Authentication
+
 In the Firebase Console (https://console.firebase.google.com):
+
 1. Go to your `chorelito-ai` project
 2. Click **Authentication** in the left menu
 3. Click **Get Started**
@@ -77,7 +94,9 @@ In the Firebase Console (https://console.firebase.google.com):
 5. Enable **Email/Password** authentication (optional backup)
 
 ### Step 8: Set Up Firestore Database
+
 In the Firebase Console:
+
 1. Click **Firestore Database** in the left menu
 2. Click **Create Database**
 3. Choose **Production mode** (we have custom rules)
@@ -85,7 +104,9 @@ In the Firebase Console:
 5. Click **Enable**
 
 ### Step 9: Set Up Storage
+
 In the Firebase Console:
+
 1. Click **Storage** in the left menu
 2. Click **Get Started**
 3. Use the default security rules (we'll deploy ours)
@@ -93,7 +114,9 @@ In the Firebase Console:
 5. Click **Done**
 
 ### Step 10: Test Voice Commands
+
 Once everything is deployed:
+
 1. Restart your Expo dev server:
    ```bash
    npx expo start --clear
@@ -110,17 +133,20 @@ Once everything is deployed:
 ## 🔍 Troubleshooting
 
 ### If deployment fails:
+
 1. Check you're logged in: `firebase login:list`
 2. Check project is set: `firebase use chorelito-ai`
 3. Check functions build: `cd functions && npm run build`
 
 ### If voice commands don't work:
+
 1. Check Firebase Console → Functions for errors
 2. Check app logs for authentication errors
 3. Verify you're signed in to the app
 4. Check Firestore rules allow your user role
 
 ### If authentication fails:
+
 1. Make sure Phone auth is enabled in Firebase Console
 2. Check that your user document has a `role` field set to `'parent'`
 3. Verify the Firebase config in `app/lib/firebase.ts` matches your project
@@ -128,18 +154,21 @@ Once everything is deployed:
 ## 📱 Testing in Expo Go vs Development Build
 
 ### Expo Go (Current):
+
 - ✅ Text input fallback works
 - ❌ Real voice recognition doesn't work (native module limitation)
 - ✅ Firebase functions work
 - ✅ Text-to-speech works
 
 ### Development Build (Recommended for production):
+
 - ✅ Real voice recognition works
 - ✅ Firebase functions work
 - ✅ Text-to-speech works
 - ✅ Full native functionality
 
 To create a development build:
+
 ```bash
 npx expo prebuild
 npx expo run:android
@@ -150,15 +179,18 @@ npx expo run:ios
 ## 🎤 Supported Voice Commands
 
 ### Child Management:
+
 - "Add a new child named [Name] with phone number [Number]"
 - "Add [Name] phone [Number]"
 
 ### Chore Management:
+
 - "Have [Child] do the dishes"
 - "Assign [Task] to [Child]"
 - "Have everyone clean their room"
 
 ### Screen Time:
+
 - "Show me screen time usage"
 - "How much screen time has [Child] used?"
 - "Grant [Number] bonus minutes to [Child]"
@@ -167,12 +199,14 @@ npx expo run:ios
 ## 🔐 Security Notes
 
 ### Firestore Rules:
+
 - Parents can read/write their own data
 - Children can only read their assigned data
 - All writes are logged in the `events` collection
 - Screen time data is protected by role-based rules
 
 ### Functions Security:
+
 - All functions require authentication
 - Parent-only actions are role-checked
 - Transactions ensure data consistency
@@ -181,6 +215,7 @@ npx expo run:ios
 ## 📊 Database Structure
 
 ### Collections:
+
 - `users` - User profiles with roles
 - `children` - Child profiles linked to parents
 - `chores` - Chore assignments
@@ -192,6 +227,7 @@ npx expo run:ios
 ## 🚀 Next Steps
 
 After Firebase is set up:
+
 1. ✅ Test voice commands
 2. ✅ Set up authentication flow
 3. ✅ Create parent onboarding
@@ -213,6 +249,7 @@ After Firebase is set up:
 ## 📞 Support
 
 If you encounter issues:
+
 1. Check Firebase Console for error logs
 2. Check app console for client-side errors
 3. Verify all services are enabled in Firebase Console
@@ -221,13 +258,17 @@ If you encounter issues:
 ## 🔒 Security: API Key Exposure Warning
 
 ### GitHub Secrets Detection
+
 GitHub detected the Firebase API key in your repository. This is **normal and expected** for Firebase client apps.
 
 ### Why It's Safe:
+
 Firebase API keys are **designed to be public** in client-side applications. They're not secret credentials.
 
 ### Important Security Measures:
+
 1. **API Key Restrictions** (Required):
+
    - Go to [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
    - Select your project: `chorelito-ai`
    - Find your API key and click "Restrict key"
@@ -237,6 +278,7 @@ Firebase API keys are **designed to be public** in client-side applications. The
      - ✅ **HTTP referrers**: Add your web domains (if any)
 
 2. **Firestore Rules** (Already configured):
+
    - ✅ Authentication required for all operations
    - ✅ Role-based access control (parent vs child)
    - ✅ Data isolation between users
@@ -247,7 +289,9 @@ Firebase API keys are **designed to be public** in client-side applications. The
    - Role-based permissions enforced
 
 ### Rotating Your API Key (Optional):
+
 If you want to generate a new key:
+
 1. Go to [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
 2. Create a new API key
 3. Update `app/lib/firebase.ts` with the new key
@@ -255,13 +299,16 @@ If you want to generate a new key:
 5. Delete the old key after deployment
 
 ### What's NOT Exposed:
+
 - ✅ Service account credentials (never in client code)
 - ✅ Admin SDK (server-side only)
 - ✅ API secrets (in Cloud Functions, not client)
 - ✅ Private keys or certificates
 
 ### Summary:
+
 Your Firebase setup is secure as long as you:
+
 1. ✅ Restrict the API key in Google Cloud Console
 2. ✅ Deploy Firestore security rules (already done)
 3. ✅ Require authentication for functions (already configured)
@@ -272,4 +319,3 @@ Your Firebase setup is secure as long as you:
 ---
 
 **Ready to deploy?** Run the commands in Step 3-6 in your terminal! 🚀
-

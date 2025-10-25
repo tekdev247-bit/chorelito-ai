@@ -3509,7 +3509,7 @@ const helpStyles = StyleSheet.create({
   }
 });
 
-// Onboarding Flow Component
+// Onboarding Flow Component  
 const OnboardingFlow: React.FC<{
   step: number;
   onNext: () => void;
@@ -3564,6 +3564,12 @@ const OnboardingFlow: React.FC<{
   const [timePickerType, setTimePickerType] = useState<'start' | 'end'>('start');
   const [selectedHour, setSelectedHour] = useState(7);
   const [selectedMinute, setSelectedMinute] = useState(0);
+  const scrollViewRef = useRef<ScrollView>(null);
+
+  // Scroll to top when step changes
+  useEffect(() => {
+    scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+  }, [step]);
 
   const openTimePicker = (type: 'start' | 'end') => {
     setTimePickerType(type);
@@ -3934,63 +3940,65 @@ const OnboardingFlow: React.FC<{
         <Text style={onboardingStyles.headerSubtitle}>Setup</Text>
       </LinearGradient>
 
+      {/* Sticky Progress Bar */}
+      <View style={onboardingStyles.progressContainer}>
+        <View style={onboardingStyles.progressBar}>
+          <View 
+            style={[
+              onboardingStyles.progressFill, 
+              { width: `${((step + 1) / 6) * 100}%` }
+            ]} 
+          />
+        </View>
+        <Text style={onboardingStyles.progressText}>
+          Step {step + 1} of 6
+        </Text>
+      </View>
+
       <ScrollView 
+        ref={scrollViewRef}
         style={onboardingStyles.scrollContent}
         contentContainerStyle={onboardingStyles.scrollContentContainer}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View style={onboardingStyles.progressContainer}>
-          <View style={onboardingStyles.progressBar}>
-            <View 
-              style={[
-                onboardingStyles.progressFill, 
-                { width: `${((step + 1) / 6) * 100}%` }
-              ]} 
-            />
-          </View>
-          <Text style={onboardingStyles.progressText}>
-            Step {step + 1} of 6
-          </Text>
-        </View>
-
         {renderStep()}
-
-        {/* Navigation buttons inside ScrollView */}
-        <View style={onboardingStyles.footerInline}>
-          <View style={onboardingStyles.buttonRow}>
-            {step > 0 && (
-              <TouchableOpacity
-                style={[onboardingStyles.button, onboardingStyles.backButton]}
-                onPress={onPrev}
-              >
-                <Text style={onboardingStyles.backButtonText}>Back</Text>
-              </TouchableOpacity>
-            )}
-            
-            <TouchableOpacity
-              style={[onboardingStyles.button, onboardingStyles.skipButton]}
-              onPress={onSkip}
-            >
-              <Text style={onboardingStyles.skipButtonText}>Skip</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[onboardingStyles.button, onboardingStyles.nextButton]}
-              onPress={onNext}
-            >
-              <LinearGradient
-                colors={enhancedTheme.gradients.primary}
-                style={onboardingStyles.nextButtonGradient}
-              >
-                <Text style={onboardingStyles.nextButtonText}>
-                  {step === 5 ? 'Get Started' : 'Next'}
-                </Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
-        </View>
       </ScrollView>
+
+      {/* Sticky Navigation Footer */}
+      <View style={onboardingStyles.footer}>
+        <View style={onboardingStyles.buttonRow}>
+          {step > 0 && (
+            <TouchableOpacity
+              style={[onboardingStyles.button, onboardingStyles.backButton]}
+              onPress={onPrev}
+            >
+              <Text style={onboardingStyles.backButtonText}>Back</Text>
+            </TouchableOpacity>
+          )}
+          
+          <TouchableOpacity
+            style={[onboardingStyles.button, onboardingStyles.skipButton]}
+            onPress={onSkip}
+          >
+            <Text style={onboardingStyles.skipButtonText}>Skip</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[onboardingStyles.button, onboardingStyles.nextButton]}
+            onPress={onNext}
+          >
+            <LinearGradient
+              colors={enhancedTheme.gradients.primary}
+              style={onboardingStyles.nextButtonGradient}
+            >
+              <Text style={onboardingStyles.nextButtonText}>
+                {step === 5 ? 'Get Started' : 'Next'}
+              </Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+      </View>
 
       {/* Time Picker Modal */}
       <Modal
@@ -4274,7 +4282,12 @@ const onboardingStyles = StyleSheet.create({
     paddingBottom: 20,
   },
   progressContainer: {
-    marginBottom: 24,
+    padding: 20,
+    paddingTop: 16,
+    paddingBottom: 16,
+    backgroundColor: '#FFFDF9',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
   },
   progressBar: {
     height: 4,
@@ -4466,16 +4479,6 @@ const onboardingStyles = StyleSheet.create({
     backgroundColor: '#FFFDF9',
     borderTopWidth: 1,
     borderTopColor: '#E2E8F0',
-    minHeight: 100,
-  },
-  footerInline: {
-    padding: 20,
-    paddingTop: 30,
-    paddingBottom: 20,
-    backgroundColor: '#FFFDF9',
-    borderTopWidth: 1,
-    borderTopColor: '#E2E8F0',
-    marginTop: 30,
   },
   buttonRow: {
     flexDirection: 'row',

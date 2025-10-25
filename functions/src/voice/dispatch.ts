@@ -49,7 +49,7 @@ export const dispatch = functions.https.onCall(async (data: Payload, context) =>
         }
 
         // Create pending invite with transaction
-        const result = await db.runTransaction(async (tx) => {
+        const inviteResult = await db.runTransaction(async (tx) => {
           const inviteRef = db.collection('invites').doc();
           
           tx.set(inviteRef, {
@@ -253,7 +253,7 @@ export const dispatch = functions.https.onCall(async (data: Payload, context) =>
         }
 
         // Find child and grant bonus with transaction
-        const result = await db.runTransaction(async (tx) => {
+        const bonusResult = await db.runTransaction(async (tx) => {
           const bonusChildrenSnapshot = await tx.get(
             db.collection('children')
               .where('parentId', '==', uid)

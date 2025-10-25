@@ -165,5 +165,67 @@ export const approveRequest = functions.https.onCall(async (data, context) => {
 });
 
 export const denyRequest = functions.https.onCall(async (data, context) => {
-  return approveRequest({ ...data, approved: false }, context);
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Sign in required.');
+  }
+
+  const { requestId, reason } = data || {};
+  
+  if (!requestId) {
+    throw new functions.https.HttpsError('invalid-argument', 'requestId required.');
+  }
+
+  const db = admin.firestore();
+  const requestRef = db.collection('timeRequests').doc(requestId);
+
+  try {
+    const result = await db.runTransaction(async (tx) => {
+      const requestSnap = await tx.get(requestRef);
+      
+      if (!requestSnap.exists) {
+        throw new functions.https.HttpsError('not-found', 'Request not found.');
+      }
+
+      const requestData = requestSnap.data();
+      const currentStatus = requestData?.status;
+      
+      if (currentStatus !== 'pending') {
+        throw new functions.https.HttpsError('failed-precondition', 'Request has already been processed.');
+      }
+
+      // Update request status to denied
+      tx.update(requestRef, {
+        status: 'denied',
+        reviewedBy: context.auth.uid,
+        reviewedAt: admin.firestore.FieldValue.serverTimestamp(),
+        denialReason: reason || null
+      });
+
+      // Create audit event
+      const auditEventRef = db.collection('events').doc();
+      tx.set(auditEventRef, {
+        type: 'time_request_denied',
+        actorId: context.auth.uid,
+        payload: {
+          requestId,
+          childId: requestData?.childId,
+          minutes: requestData?.minutes,
+          reason: reason || null
+        },
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+
+      return { childId: requestData?.childId };
+    });
+
+    return { ok: true, message: 'Request denied.' };
+  } catch (error: any) {
+    console.error('Deny request error:', error);
+    
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+    
+    throw new functions.https.HttpsError('internal', 'Failed to deny request.');
+  }
 });

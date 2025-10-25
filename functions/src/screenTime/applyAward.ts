@@ -133,7 +133,7 @@ export const grantBonusTime = functions.https.onCall(async (data, context) => {
     const awardDate = new Date().toISOString().slice(0, 10);
     const screenTimeRef = db.collection('screenTime').doc(`${childId}_${awardDate}`);
 
-    await db.runTransaction(async (tx) => {
+    const txResult = await db.runTransaction(async (tx) => {
       const screenTimeSnap = await tx.get(screenTimeRef);
       const currentData = screenTimeSnap.data();
       
@@ -166,13 +166,15 @@ export const grantBonusTime = functions.https.onCall(async (data, context) => {
         },
         createdAt: admin.firestore.FieldValue.serverTimestamp()
       });
+
+      return { newBudgetMinutes, cappedBudget };
     });
 
     return { 
       ok: true, 
       message: `Granted ${minutes} bonus minutes to child.`,
       awardDate,
-      capped: Math.min(newBudgetMinutes, 240) !== newBudgetMinutes
+      capped: txResult.cappedBudget !== txResult.newBudgetMinutes
     };
   } catch (error: any) {
     console.error('Grant bonus time error:', error);

@@ -1,0 +1,28 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Helper function to check if user is authenticated
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    // Profile pictures
+    match /profiles/{userId}/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && request.auth.uid == userId;
+    }
+    
+    // Chore verification images
+    match /chores/{choreId}/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+    
+    // Exports (parent only)
+    match /exports/{userId}/{allPaths=**} {
+      allow read: if isSignedIn() && request.auth.uid == userId;
+      allow write: if false; // Only server can write exports
+    }
+  }
+}
+

@@ -218,6 +218,57 @@ If you encounter issues:
 3. Verify all services are enabled in Firebase Console
 4. Ensure billing is enabled (required for Cloud Functions)
 
+## 🔒 Security: API Key Exposure Warning
+
+### GitHub Secrets Detection
+GitHub detected the Firebase API key in your repository. This is **normal and expected** for Firebase client apps.
+
+### Why It's Safe:
+Firebase API keys are **designed to be public** in client-side applications. They're not secret credentials.
+
+### Important Security Measures:
+1. **API Key Restrictions** (Required):
+   - Go to [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+   - Select your project: `chorelito-ai`
+   - Find your API key and click "Restrict key"
+   - Set Application restrictions:
+     - ✅ **Android apps**: Add your package name
+     - ✅ **iOS apps**: Add your bundle ID
+     - ✅ **HTTP referrers**: Add your web domains (if any)
+
+2. **Firestore Rules** (Already configured):
+   - ✅ Authentication required for all operations
+   - ✅ Role-based access control (parent vs child)
+   - ✅ Data isolation between users
+
+3. **Authentication** (Required):
+   - All functions require user authentication
+   - Phone/Email verification for users
+   - Role-based permissions enforced
+
+### Rotating Your API Key (Optional):
+If you want to generate a new key:
+1. Go to [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+2. Create a new API key
+3. Update `app/lib/firebase.ts` with the new key
+4. Restrict the new key as described above
+5. Delete the old key after deployment
+
+### What's NOT Exposed:
+- ✅ Service account credentials (never in client code)
+- ✅ Admin SDK (server-side only)
+- ✅ API secrets (in Cloud Functions, not client)
+- ✅ Private keys or certificates
+
+### Summary:
+Your Firebase setup is secure as long as you:
+1. ✅ Restrict the API key in Google Cloud Console
+2. ✅ Deploy Firestore security rules (already done)
+3. ✅ Require authentication for functions (already configured)
+4. ✅ Use role-based access control (already implemented)
+
+**The API key in your code is intentional and safe when properly restricted!**
+
 ---
 
 **Ready to deploy?** Run the commands in Step 3-6 in your terminal! 🚀

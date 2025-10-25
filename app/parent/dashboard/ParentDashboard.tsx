@@ -130,6 +130,24 @@ const AITopTabs: React.FC<AITopTabsProps> = ({ activeTab, onTabChange }) => {
   );
 };
 
+// Home Button Component
+const HomeButton: React.FC<{ onPress: () => void }> = ({ onPress }) => {
+  return (
+    <TouchableOpacity
+      style={homeButtonStyles.container}
+      onPress={onPress}
+    >
+      <LinearGradient
+        colors={enhancedTheme.gradients.primary}
+        style={homeButtonStyles.button}
+      >
+        <Text style={homeButtonStyles.icon}>🏠</Text>
+        <Text style={homeButtonStyles.text}>Home</Text>
+      </LinearGradient>
+    </TouchableOpacity>
+  );
+};
+
 // Inline ChoresManagementTab component
 interface Chore {
   id: string;
@@ -140,7 +158,7 @@ interface Chore {
   completed: boolean;
 }
 
-const ChoresManagementTab: React.FC = () => {
+const ChoresManagementTab: React.FC<{ onHomePress: () => void }> = ({ onHomePress }) => {
   const [chores, setChores] = useState<Chore[]>([
     { id: '1', name: 'Clean room', points: 5, emoji: '🧹', assignedTo: 'Emma', completed: true },
     { id: '2', name: 'Do dishes', points: 10, emoji: '🍽️', assignedTo: 'Emma', completed: true },
@@ -258,9 +276,12 @@ const ChoresManagementTab: React.FC = () => {
 
   return (
     <ScrollView style={{ flex: 1, padding: 16 }}>
-      <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#2D3748', marginBottom: 24 }}>
-        Manage Chores
-      </Text>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+        <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#2D3748' }}>
+          Manage Chores
+        </Text>
+        <HomeButton onPress={onHomePress} />
+      </View>
 
       {/* Three Action Buttons */}
       <View style={{ flexDirection: 'row', gap: 12, marginBottom: 24 }}>
@@ -754,7 +775,7 @@ const ChoresManagementTab: React.FC = () => {
 };
 
 // Inline HelpTab component
-const HelpTab: React.FC = () => {
+const HelpTab: React.FC<{ onHomePress: () => void }> = ({ onHomePress }) => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -780,6 +801,14 @@ const HelpTab: React.FC = () => {
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: '#FFFDF9' }}>
+      <View style={{ padding: 16, paddingBottom: 8 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#2D3748' }}>
+            Help & Support
+          </Text>
+          <HomeButton onPress={onHomePress} />
+        </View>
+      </View>
       <View style={helpStyles.container}>
         <Text style={helpStyles.title}>Need Help?</Text>
         <Text style={helpStyles.subtitle}>
@@ -884,7 +913,7 @@ const HelpTab: React.FC = () => {
 };
 
 // Inline ReportsTab component
-const ReportsTab: React.FC = () => {
+const ReportsTab: React.FC<{ onHomePress: () => void }> = ({ onHomePress }) => {
   // Mock data for reports
   const children = [
     { id: '1', name: 'Emma', age: 8, points: 450, level: 3, avatar: '👧', completionRate: 85 },
@@ -912,6 +941,14 @@ const ReportsTab: React.FC = () => {
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: '#FFFDF9' }}>
+      <View style={{ padding: 16, paddingBottom: 8 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#2D3748' }}>
+            Reports & Analytics
+          </Text>
+          <HomeButton onPress={onHomePress} />
+        </View>
+      </View>
       <View style={reportsStyles.container}>
         {/* Overview Cards */}
         <View style={reportsStyles.section}>
@@ -1047,7 +1084,7 @@ interface Child {
   screenTimeEndTime: string; // e.g., "20:00"
 }
 
-const ChildrenManagementTab: React.FC = () => {
+const ChildrenManagementTab: React.FC<{ onHomePress: () => void }> = ({ onHomePress }) => {
   const [children, setChildren] = useState<Child[]>([
     { id: '1', name: 'Emma', age: 8, points: 450, level: 3, avatar: '👧', dailyScreenTimeLimit: 60, screenTimeStartTime: '07:00', screenTimeEndTime: '20:00' },
     { id: '2', name: 'Liam', age: 6, points: 280, level: 2, avatar: '👦', dailyScreenTimeLimit: 45, screenTimeStartTime: '08:00', screenTimeEndTime: '19:00' }
@@ -1192,12 +1229,12 @@ const ChildrenManagementTab: React.FC = () => {
   return (
     <View style={{ flex: 1 }}>
       <View style={{ padding: 16, paddingBottom: 8 }}>
-        <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#2D3748', marginBottom: 8 }}>
-          Manage Children
-        </Text>
-        <Text style={{ fontSize: 16, color: '#4A5568', marginBottom: 16 }}>
-          Edit profiles and view progress
-        </Text>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#2D3748' }}>
+            Manage Children
+          </Text>
+          <HomeButton onPress={onHomePress} />
+        </View>
       </View>
 
       <ScrollView style={{ flex: 1, paddingHorizontal: 16 }} showsVerticalScrollIndicator={false}>
@@ -2021,6 +2058,33 @@ const modalStyles = StyleSheet.create({
   }
 });
 
+const homeButtonStyles = StyleSheet.create({
+  container: {
+    marginLeft: 12
+  },
+  button: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    shadowColor: '#63B3ED',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3
+  },
+  icon: {
+    fontSize: 16,
+    marginRight: 6
+  },
+  text: {
+    color: '#FFF',
+    fontWeight: '600',
+    fontSize: 14
+  }
+});
+
 const tabStyles = StyleSheet.create({
   container: {
     backgroundColor: '#FFF',
@@ -2427,14 +2491,18 @@ export const ParentDashboard: React.FC = () => {
     setTimeout(() => setIsListening(false), 3000); // Auto-stop after 3 seconds for demo
   };
 
+  const handleHomePress = () => {
+    setActiveTab('AI Settings'); // Navigate to home screen (AI Settings tab)
+  };
+
   const renderTabContent = () => {
     switch (activeTab) {
       case 'Children':
-        return <ChildrenManagementTab />;
+        return <ChildrenManagementTab onHomePress={handleHomePress} />;
       case 'Chores':
-        return <ChoresManagementTab />;
+        return <ChoresManagementTab onHomePress={handleHomePress} />;
       case 'Reports':
-        return <ReportsTab />;
+        return <ReportsTab onHomePress={handleHomePress} />;
       case 'AI Settings':
         return (
           <View style={{ padding: 16 }}>
@@ -2442,7 +2510,7 @@ export const ParentDashboard: React.FC = () => {
           </View>
         );
       case 'Help':
-        return <HelpTab />;
+        return <HelpTab onHomePress={handleHomePress} />;
       default:
         return (
           <View style={{ padding: 16 }}>

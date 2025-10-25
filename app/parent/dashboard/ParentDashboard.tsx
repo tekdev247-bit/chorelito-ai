@@ -226,7 +226,7 @@ const ChoresManagementTab: React.FC = () => {
   };
 
   const openEditChore = () => {
-    setSelectedChore(null);
+    setSelectedChore(null); // Start with no chore selected to show the selection list
     setNewChoreName('');
     setNewChorePoints('');
     setNewChoreEmoji('🧹');
@@ -503,10 +503,50 @@ const ChoresManagementTab: React.FC = () => {
         onRequestClose={() => setShowEditChore(false)}
       >
         <View style={modalStyles.overlay}>
-          <View style={[modalStyles.modalContainer, { maxHeight: '85%' }]}>
+          <View style={modalStyles.modalContainer}>
             <Text style={modalStyles.modalTitle}>Edit Chore</Text>
             
-            {selectedChore && (
+            {!selectedChore ? (
+              <>
+                <Text style={modalStyles.label}>Choose a chore to edit:</Text>
+                <ScrollView style={{ maxHeight: 400, marginBottom: 16 }}>
+                  {chores.map((chore) => (
+                    <TouchableOpacity
+                      key={chore.id}
+                      onPress={() => selectChoreForEdit(chore)}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        padding: 16,
+                        backgroundColor: 'rgba(99, 179, 237, 0.1)',
+                        borderRadius: 12,
+                        marginBottom: 8
+                      }}
+                    >
+                      <Text style={{ fontSize: 24, marginRight: 12 }}>{chore.emoji}</Text>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 16, fontWeight: '600', color: '#2D3748' }}>
+                          {chore.name}
+                        </Text>
+                        <Text style={{ fontSize: 14, color: '#4A5568' }}>
+                          {chore.points} points • Assigned to {chore.assignedTo}
+                        </Text>
+                      </View>
+                      <Text style={{ fontSize: 20, color: '#63B3ED' }}>→</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+
+                <View style={modalStyles.buttonRow}>
+                  <TouchableOpacity
+                    style={[modalStyles.button, modalStyles.cancelButton, { flex: 1 }]}
+                    onPress={() => setShowEditChore(false)}
+                  >
+                    <Text style={modalStyles.cancelButtonText}>Cancel</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            ) : (
               <>
                 <ScrollView showsVerticalScrollIndicator={false}>
                   <Text style={modalStyles.label}>Chore Icon</Text>
@@ -614,7 +654,7 @@ const ChoresManagementTab: React.FC = () => {
         onRequestClose={() => setShowNewChore(false)}
       >
         <View style={modalStyles.overlay}>
-          <View style={[modalStyles.modalContainer, { maxHeight: '85%' }]}>
+          <View style={modalStyles.modalContainer}>
             <Text style={modalStyles.modalTitle}>New Chore</Text>
             
             <ScrollView showsVerticalScrollIndicator={false}>
@@ -713,6 +753,287 @@ const ChoresManagementTab: React.FC = () => {
   );
 };
 
+// Inline HelpTab component
+const HelpTab: React.FC = () => {
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    subject: '',
+    message: ''
+  });
+  const [showConfirmation, setShowConfirmation] = useState(false);
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleSubmit = () => {
+    if (!formData.name || !formData.email || !formData.subject || !formData.message) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+    
+    // Simulate sending email
+    setShowConfirmation(true);
+    setFormData({ name: '', email: '', subject: '', message: '' });
+  };
+
+  return (
+    <ScrollView style={{ flex: 1, backgroundColor: '#FFFDF9' }}>
+      <View style={helpStyles.container}>
+        <Text style={helpStyles.title}>Need Help?</Text>
+        <Text style={helpStyles.subtitle}>
+          Send us a message and we'll get back to you within 48 hours
+        </Text>
+
+        <View style={helpStyles.form}>
+          <Text style={helpStyles.label}>Your Name</Text>
+          <TextInput
+            style={helpStyles.input}
+            value={formData.name}
+            onChangeText={(value) => handleInputChange('name', value)}
+            placeholder="Enter your name"
+            placeholderTextColor="#999"
+          />
+
+          <Text style={helpStyles.label}>Email Address</Text>
+          <TextInput
+            style={helpStyles.input}
+            value={formData.email}
+            onChangeText={(value) => handleInputChange('email', value)}
+            placeholder="your.email@example.com"
+            placeholderTextColor="#999"
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
+
+          <Text style={helpStyles.label}>Subject</Text>
+          <TextInput
+            style={helpStyles.input}
+            value={formData.subject}
+            onChangeText={(value) => handleInputChange('subject', value)}
+            placeholder="What can we help you with?"
+            placeholderTextColor="#999"
+          />
+
+          <Text style={helpStyles.label}>Message</Text>
+          <TextInput
+            style={[helpStyles.input, helpStyles.textArea]}
+            value={formData.message}
+            onChangeText={(value) => handleInputChange('message', value)}
+            placeholder="Please describe your question or issue in detail..."
+            placeholderTextColor="#999"
+            multiline
+            numberOfLines={6}
+            textAlignVertical="top"
+          />
+
+          <TouchableOpacity style={helpStyles.submitButton} onPress={handleSubmit}>
+            <LinearGradient
+              colors={enhancedTheme.gradients.primary}
+              style={helpStyles.submitButtonGradient}
+            >
+              <Text style={helpStyles.submitButtonText}>Send Message</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+
+        <View style={helpStyles.contactInfo}>
+          <Text style={helpStyles.contactTitle}>Other Ways to Reach Us</Text>
+          <View style={helpStyles.contactItem}>
+            <Text style={helpStyles.contactIcon}>📧</Text>
+            <Text style={helpStyles.contactText}>support@chorelito.com</Text>
+          </View>
+          <View style={helpStyles.contactItem}>
+            <Text style={helpStyles.contactIcon}>⏰</Text>
+            <Text style={helpStyles.contactText}>Response time: Typically within 48 hours</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Confirmation Modal */}
+      <Modal
+        visible={showConfirmation}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowConfirmation(false)}
+      >
+        <View style={helpStyles.modalOverlay}>
+          <View style={helpStyles.modalContainer}>
+            <Text style={helpStyles.modalIcon}>✅</Text>
+            <Text style={helpStyles.modalTitle}>Message Sent!</Text>
+            <Text style={helpStyles.modalMessage}>
+              Thank you for contacting us. We'll review your message and get back to you typically within 48 hours.
+            </Text>
+            <TouchableOpacity
+              style={helpStyles.modalButton}
+              onPress={() => setShowConfirmation(false)}
+            >
+              <LinearGradient
+                colors={enhancedTheme.gradients.primary}
+                style={helpStyles.modalButtonGradient}
+              >
+                <Text style={helpStyles.modalButtonText}>Got it</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </ScrollView>
+  );
+};
+
+// Inline ReportsTab component
+const ReportsTab: React.FC = () => {
+  // Mock data for reports
+  const children = [
+    { id: '1', name: 'Emma', age: 8, points: 450, level: 3, avatar: '👧', completionRate: 85 },
+    { id: '2', name: 'Liam', age: 6, points: 280, level: 2, avatar: '👦', completionRate: 72 }
+  ];
+
+  const chores = [
+    { id: '1', name: 'Clean room', points: 5, emoji: '🧹', assignedTo: 'Emma', completed: true, frequency: 'Daily' },
+    { id: '2', name: 'Do dishes', points: 10, emoji: '🍽️', assignedTo: 'Emma', completed: true, frequency: 'Daily' },
+    { id: '3', name: 'Homework', points: 15, emoji: '📚', assignedTo: 'Liam', completed: false, frequency: 'Daily' },
+    { id: '4', name: 'Take out trash', points: 5, emoji: '🗑️', assignedTo: 'Liam', completed: false, frequency: 'Weekly' },
+    { id: '5', name: 'Feed pet', points: 10, emoji: '🐶', assignedTo: 'Emma', completed: false, frequency: 'Daily' }
+  ];
+
+  const achievements = [
+    { id: '1', title: 'Chore Master', description: 'Completed 10 chores in a row', child: 'Emma', date: '2 days ago', emoji: '🏆' },
+    { id: '2', title: 'Helping Hand', description: 'Helped with extra chores', child: 'Liam', date: '1 week ago', emoji: '🤝' },
+    { id: '3', title: 'Early Bird', description: 'Completed morning routine 5 days straight', child: 'Emma', date: '3 days ago', emoji: '🌅' }
+  ];
+
+  const screenTimeData = [
+    { child: 'Emma', today: 45, limit: 60, weekly: 280, weeklyLimit: 420 },
+    { child: 'Liam', today: 30, limit: 45, weekly: 180, weeklyLimit: 315 }
+  ];
+
+  return (
+    <ScrollView style={{ flex: 1, backgroundColor: '#FFFDF9' }}>
+      <View style={reportsStyles.container}>
+        {/* Overview Cards */}
+        <View style={reportsStyles.section}>
+          <Text style={reportsStyles.sectionTitle}>📊 Overview</Text>
+          <View style={reportsStyles.overviewGrid}>
+            <View style={reportsStyles.overviewCard}>
+              <Text style={reportsStyles.overviewNumber}>78%</Text>
+              <Text style={reportsStyles.overviewLabel}>Avg Completion</Text>
+            </View>
+            <View style={reportsStyles.overviewCard}>
+              <Text style={reportsStyles.overviewNumber}>12</Text>
+              <Text style={reportsStyles.overviewLabel}>Chores This Week</Text>
+            </View>
+            <View style={reportsStyles.overviewCard}>
+              <Text style={reportsStyles.overviewNumber}>730</Text>
+              <Text style={reportsStyles.overviewLabel}>Total Points</Text>
+            </View>
+            <View style={reportsStyles.overviewCard}>
+              <Text style={reportsStyles.overviewNumber}>3</Text>
+              <Text style={reportsStyles.overviewLabel}>Achievements</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Child Progress */}
+        <View style={reportsStyles.section}>
+          <Text style={reportsStyles.sectionTitle}>👥 Child Progress</Text>
+          {children.map((child) => (
+            <View key={child.id} style={reportsStyles.childCard}>
+              <LinearGradient
+                colors={['rgba(99, 179, 237, 0.1)', 'rgba(99, 179, 237, 0.05)']}
+                style={reportsStyles.childCardGradient}
+              >
+                <View style={reportsStyles.childHeader}>
+                  <Text style={reportsStyles.childAvatar}>{child.avatar}</Text>
+                  <View style={reportsStyles.childInfo}>
+                    <Text style={reportsStyles.childName}>{child.name}</Text>
+                    <Text style={reportsStyles.childAge}>Age {child.age} • Level {child.level}</Text>
+                  </View>
+                  <View style={reportsStyles.pointsBadge}>
+                    <Text style={reportsStyles.pointsText}>{child.points}</Text>
+                  </View>
+                </View>
+                
+                <View style={reportsStyles.progressSection}>
+                  <Text style={reportsStyles.progressLabel}>Completion Rate</Text>
+                  <View style={reportsStyles.progressBar}>
+                    <View style={[reportsStyles.progressFill, { width: `${child.completionRate}%` }]} />
+                  </View>
+                  <Text style={reportsStyles.progressText}>{child.completionRate}%</Text>
+                </View>
+              </LinearGradient>
+            </View>
+          ))}
+        </View>
+
+        {/* Chore Analytics */}
+        <View style={reportsStyles.section}>
+          <Text style={reportsStyles.sectionTitle}>📈 Chore Analytics</Text>
+          <View style={reportsStyles.choreStats}>
+            <View style={reportsStyles.choreStatCard}>
+              <Text style={reportsStyles.choreStatTitle}>Most Completed</Text>
+              <View style={reportsStyles.choreStatItem}>
+                <Text style={reportsStyles.choreStatEmoji}>🧹</Text>
+                <Text style={reportsStyles.choreStatName}>Clean room</Text>
+                <Text style={reportsStyles.choreStatValue}>95%</Text>
+              </View>
+            </View>
+            
+            <View style={reportsStyles.choreStatCard}>
+              <Text style={reportsStyles.choreStatTitle}>Needs Attention</Text>
+              <View style={reportsStyles.choreStatItem}>
+                <Text style={reportsStyles.choreStatEmoji}>📚</Text>
+                <Text style={reportsStyles.choreStatName}>Homework</Text>
+                <Text style={reportsStyles.choreStatValue}>40%</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* Screen Time Insights */}
+        <View style={reportsStyles.section}>
+          <Text style={reportsStyles.sectionTitle}>⏰ Screen Time Insights</Text>
+          {screenTimeData.map((data, index) => (
+            <View key={index} style={reportsStyles.screenTimeCard}>
+              <View style={reportsStyles.screenTimeHeader}>
+                <Text style={reportsStyles.screenTimeChild}>{data.child}</Text>
+                <Text style={reportsStyles.screenTimeStatus}>
+                  {data.today < data.limit ? '✅' : '⚠️'} {data.today}/{data.limit} min today
+                </Text>
+              </View>
+              <View style={reportsStyles.screenTimeBar}>
+                <View style={[reportsStyles.screenTimeFill, { width: `${(data.today / data.limit) * 100}%` }]} />
+              </View>
+              <Text style={reportsStyles.screenTimeWeekly}>
+                Weekly: {data.weekly}/{data.weeklyLimit} minutes
+              </Text>
+            </View>
+          ))}
+        </View>
+
+        {/* Recent Achievements */}
+        <View style={reportsStyles.section}>
+          <Text style={reportsStyles.sectionTitle}>🏆 Recent Achievements</Text>
+          {achievements.map((achievement) => (
+            <View key={achievement.id} style={reportsStyles.achievementCard}>
+              <Text style={reportsStyles.achievementEmoji}>{achievement.emoji}</Text>
+              <View style={reportsStyles.achievementContent}>
+                <Text style={reportsStyles.achievementTitle}>{achievement.title}</Text>
+                <Text style={reportsStyles.achievementDescription}>{achievement.description}</Text>
+                <Text style={reportsStyles.achievementMeta}>
+                  {achievement.child} • {achievement.date}
+                </Text>
+              </View>
+            </View>
+          ))}
+        </View>
+      </View>
+    </ScrollView>
+  );
+};
+
 // Inline ChildrenManagementTab component
 interface Child {
   id: string;
@@ -721,12 +1042,15 @@ interface Child {
   points: number;
   level: number;
   avatar: string;
+  dailyScreenTimeLimit: number; // in minutes
+  screenTimeStartTime: string; // e.g., "07:00"
+  screenTimeEndTime: string; // e.g., "20:00"
 }
 
 const ChildrenManagementTab: React.FC = () => {
   const [children, setChildren] = useState<Child[]>([
-    { id: '1', name: 'Emma', age: 8, points: 450, level: 3, avatar: '👧' },
-    { id: '2', name: 'Liam', age: 6, points: 280, level: 2, avatar: '👦' }
+    { id: '1', name: 'Emma', age: 8, points: 450, level: 3, avatar: '👧', dailyScreenTimeLimit: 60, screenTimeStartTime: '07:00', screenTimeEndTime: '20:00' },
+    { id: '2', name: 'Liam', age: 6, points: 280, level: 2, avatar: '👦', dailyScreenTimeLimit: 45, screenTimeStartTime: '08:00', screenTimeEndTime: '19:00' }
   ]);
   const [editingChild, setEditingChild] = useState<Child | null>(null);
   const [showAddChild, setShowAddChild] = useState(false);
@@ -736,22 +1060,45 @@ const ChildrenManagementTab: React.FC = () => {
   const [editName, setEditName] = useState('');
   const [editAge, setEditAge] = useState('');
   const [editAvatar, setEditAvatar] = useState('');
+  const [editDailyScreenTime, setEditDailyScreenTime] = useState('');
+  const [editScreenTimeStart, setEditScreenTimeStart] = useState('');
+  const [editScreenTimeEnd, setEditScreenTimeEnd] = useState('');
   const [newChildName, setNewChildName] = useState('');
   const [newChildAge, setNewChildAge] = useState('');
   const [newChildAvatar, setNewChildAvatar] = useState('👶');
+  const [newChildDailyScreenTime, setNewChildDailyScreenTime] = useState('60');
+  const [newChildScreenTimeStart, setNewChildScreenTimeStart] = useState('07:00');
+  const [newChildScreenTimeEnd, setNewChildScreenTimeEnd] = useState('20:00');
+  
+  // Time picker states
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [timePickerType, setTimePickerType] = useState<'start' | 'end' | 'newStart' | 'newEnd'>('start');
+  const [selectedHour, setSelectedHour] = useState(7);
+  const [selectedMinute, setSelectedMinute] = useState(0);
 
   const handleEditProfile = (child: Child) => {
     setEditingChild(child);
     setEditName(child.name);
     setEditAge(child.age.toString());
     setEditAvatar(child.avatar);
+    setEditDailyScreenTime(child.dailyScreenTimeLimit.toString());
+    setEditScreenTimeStart(child.screenTimeStartTime);
+    setEditScreenTimeEnd(child.screenTimeEndTime);
   };
 
   const handleSaveProfile = () => {
     if (editingChild) {
       setChildren(children.map(c => 
         c.id === editingChild.id 
-          ? { ...c, name: editName, age: parseInt(editAge) || c.age, avatar: editAvatar }
+          ? { 
+              ...c, 
+              name: editName, 
+              age: parseInt(editAge) || c.age, 
+              avatar: editAvatar,
+              dailyScreenTimeLimit: parseInt(editDailyScreenTime) || c.dailyScreenTimeLimit,
+              screenTimeStartTime: editScreenTimeStart || c.screenTimeStartTime,
+              screenTimeEndTime: editScreenTimeEnd || c.screenTimeEndTime
+            }
           : c
       ));
       Alert.alert('Success', `${editName}'s profile has been updated!`);
@@ -770,6 +1117,7 @@ const ChildrenManagementTab: React.FC = () => {
     setNewChildAvatar('👶');
   };
 
+
   const handleSaveNewChild = () => {
     if (newChildName && newChildAge) {
       const newChild: Child = {
@@ -778,7 +1126,10 @@ const ChildrenManagementTab: React.FC = () => {
         age: parseInt(newChildAge),
         points: 0,
         level: 1,
-        avatar: newChildAvatar
+        avatar: newChildAvatar,
+        dailyScreenTimeLimit: parseInt(newChildDailyScreenTime) || 60,
+        screenTimeStartTime: newChildScreenTimeStart || '07:00',
+        screenTimeEndTime: newChildScreenTimeEnd || '20:00'
       };
       setChildren([...children, newChild]);
       Alert.alert('Success', `${newChildName} has been added!`);
@@ -788,18 +1139,69 @@ const ChildrenManagementTab: React.FC = () => {
     }
   };
 
+  // Time picker functions
+  const openTimePicker = (type: 'start' | 'end' | 'newStart' | 'newEnd') => {
+    setTimePickerType(type);
+    setShowTimePicker(true);
+    
+    // Parse current time based on type
+    let currentTime = '';
+    switch (type) {
+      case 'start':
+        currentTime = editScreenTimeStart;
+        break;
+      case 'end':
+        currentTime = editScreenTimeEnd;
+        break;
+      case 'newStart':
+        currentTime = newChildScreenTimeStart;
+        break;
+      case 'newEnd':
+        currentTime = newChildScreenTimeEnd;
+        break;
+    }
+    
+    const [hour, minute] = currentTime.split(':').map(Number);
+    setSelectedHour(hour);
+    setSelectedMinute(minute);
+  };
+
+  const confirmTimeSelection = () => {
+    const timeString = `${selectedHour.toString().padStart(2, '0')}:${selectedMinute.toString().padStart(2, '0')}`;
+    
+    switch (timePickerType) {
+      case 'start':
+        setEditScreenTimeStart(timeString);
+        break;
+      case 'end':
+        setEditScreenTimeEnd(timeString);
+        break;
+      case 'newStart':
+        setNewChildScreenTimeStart(timeString);
+        break;
+      case 'newEnd':
+        setNewChildScreenTimeEnd(timeString);
+        break;
+    }
+    
+    setShowTimePicker(false);
+  };
+
   const avatarOptions = ['👧', '👦', '👶', '🧒', '👨', '👩', '🧑', '👴', '👵'];
 
   return (
-    <ScrollView style={{ flex: 1, padding: 16 }}>
-      <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#2D3748', marginBottom: 8 }}>
-        Manage Children
-      </Text>
-      <Text style={{ fontSize: 16, color: '#4A5568', marginBottom: 16 }}>
-        Edit profiles and view progress
-      </Text>
+    <View style={{ flex: 1 }}>
+      <View style={{ padding: 16, paddingBottom: 8 }}>
+        <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#2D3748', marginBottom: 8 }}>
+          Manage Children
+        </Text>
+        <Text style={{ fontSize: 16, color: '#4A5568', marginBottom: 16 }}>
+          Edit profiles and view progress
+        </Text>
+      </View>
 
-      {children.map((child) => (
+      <ScrollView style={{ flex: 1, paddingHorizontal: 16 }} showsVerticalScrollIndicator={false}>
+        {children.map((child) => (
         <View key={child.id} style={childCardStyles.childCard}>
           <LinearGradient
             colors={['rgba(255, 255, 255, 0.95)', 'rgba(255, 255, 255, 0.85)']}
@@ -844,20 +1246,24 @@ const ChildrenManagementTab: React.FC = () => {
             </View>
           </LinearGradient>
         </View>
-      ))}
+        ))}
+      </ScrollView>
 
-      <TouchableOpacity 
-        style={childCardStyles.addButton}
-        onPress={handleAddNewChild}
-      >
-        <LinearGradient
-          colors={enhancedTheme.gradients.primary}
-          style={childCardStyles.addButtonGradient}
+      {/* Sticky Add New Child Button */}
+      <View style={{ padding: 16, paddingTop: 8 }}>
+        <TouchableOpacity 
+          style={childCardStyles.addButton}
+          onPress={handleAddNewChild}
         >
-          <Text style={childCardStyles.addButtonIcon}>+</Text>
-          <Text style={childCardStyles.addButtonText}>Add New Child</Text>
-        </LinearGradient>
-      </TouchableOpacity>
+          <LinearGradient
+            colors={enhancedTheme.gradients.primary}
+            style={childCardStyles.addButtonGradient}
+          >
+            <Text style={childCardStyles.addButtonIcon}>+</Text>
+            <Text style={childCardStyles.addButtonText}>Add New Child</Text>
+          </LinearGradient>
+        </TouchableOpacity>
+      </View>
 
       {/* Edit Profile Modal */}
       <Modal
@@ -868,9 +1274,10 @@ const ChildrenManagementTab: React.FC = () => {
       >
         <View style={modalStyles.overlay}>
           <View style={modalStyles.modalContainer}>
-            <Text style={modalStyles.modalTitle}>Edit Profile</Text>
-            
-            <Text style={modalStyles.label}>Avatar</Text>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={modalStyles.modalTitle}>Edit Profile</Text>
+              
+              <Text style={modalStyles.label}>Avatar</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={modalStyles.avatarScroll}>
               {avatarOptions.map((emoji) => (
                 <TouchableOpacity
@@ -886,24 +1293,76 @@ const ChildrenManagementTab: React.FC = () => {
               ))}
             </ScrollView>
 
-            <Text style={modalStyles.label}>Name</Text>
-            <TextInput
-              style={modalStyles.input}
-              value={editName}
-              onChangeText={setEditName}
-              placeholder="Enter name"
-              placeholderTextColor="#999"
-            />
+            <View style={modalStyles.rowContainer}>
+              <View style={modalStyles.halfWidth}>
+                <Text style={modalStyles.label}>Name</Text>
+                <TextInput
+                  style={modalStyles.input}
+                  value={editName}
+                  onChangeText={setEditName}
+                  placeholder="Enter name"
+                  placeholderTextColor="#999"
+                />
+              </View>
+              <View style={modalStyles.halfWidth}>
+                <Text style={modalStyles.label}>Age</Text>
+                <TextInput
+                  style={modalStyles.input}
+                  value={editAge}
+                  onChangeText={setEditAge}
+                  placeholder="Enter age"
+                  placeholderTextColor="#999"
+                  keyboardType="numeric"
+                />
+              </View>
+            </View>
 
-            <Text style={modalStyles.label}>Age</Text>
+            <Text style={modalStyles.label}>Daily Screen Time Limit (minutes)</Text>
             <TextInput
               style={modalStyles.input}
-              value={editAge}
-              onChangeText={setEditAge}
-              placeholder="Enter age"
+              value={editDailyScreenTime}
+              onChangeText={setEditDailyScreenTime}
+              placeholder="e.g., 60"
               placeholderTextColor="#999"
               keyboardType="numeric"
             />
+
+            <Text style={modalStyles.label}>Begin Time</Text>
+            <View style={modalStyles.timeInputContainer}>
+              <TextInput
+                style={[modalStyles.input, modalStyles.timeInput]}
+                value={editScreenTimeStart}
+                onChangeText={setEditScreenTimeStart}
+                placeholder="07:00"
+                placeholderTextColor="#999"
+                keyboardType="numeric"
+              />
+              <TouchableOpacity 
+                style={modalStyles.clockButton}
+                onPress={() => openTimePicker('start')}
+              >
+                <Text style={modalStyles.clockIcon}>🕐</Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={modalStyles.label}>End Time</Text>
+            <View style={modalStyles.timeInputContainer}>
+              <TextInput
+                style={[modalStyles.input, modalStyles.timeInput]}
+                value={editScreenTimeEnd}
+                onChangeText={setEditScreenTimeEnd}
+                placeholder="20:00"
+                placeholderTextColor="#999"
+                keyboardType="numeric"
+              />
+              <TouchableOpacity 
+                style={modalStyles.clockButton}
+                onPress={() => openTimePicker('end')}
+              >
+                <Text style={modalStyles.clockIcon}>🕐</Text>
+              </TouchableOpacity>
+            </View>
+            </ScrollView>
 
             <View style={modalStyles.buttonRow}>
               <TouchableOpacity
@@ -1011,9 +1470,10 @@ const ChildrenManagementTab: React.FC = () => {
       >
         <View style={modalStyles.overlay}>
           <View style={modalStyles.modalContainer}>
-            <Text style={modalStyles.modalTitle}>Add New Child</Text>
-            
-            <Text style={modalStyles.label}>Avatar</Text>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={modalStyles.modalTitle}>Add New Child</Text>
+              
+              <Text style={modalStyles.label}>Avatar</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={modalStyles.avatarScroll}>
               {avatarOptions.map((emoji) => (
                 <TouchableOpacity
@@ -1029,24 +1489,76 @@ const ChildrenManagementTab: React.FC = () => {
               ))}
             </ScrollView>
 
-            <Text style={modalStyles.label}>Name</Text>
-            <TextInput
-              style={modalStyles.input}
-              value={newChildName}
-              onChangeText={setNewChildName}
-              placeholder="Enter name"
-              placeholderTextColor="#999"
-            />
+            <View style={modalStyles.rowContainer}>
+              <View style={modalStyles.halfWidth}>
+                <Text style={modalStyles.label}>Name</Text>
+                <TextInput
+                  style={modalStyles.input}
+                  value={newChildName}
+                  onChangeText={setNewChildName}
+                  placeholder="Enter name"
+                  placeholderTextColor="#999"
+                />
+              </View>
+              <View style={modalStyles.halfWidth}>
+                <Text style={modalStyles.label}>Age</Text>
+                <TextInput
+                  style={modalStyles.input}
+                  value={newChildAge}
+                  onChangeText={setNewChildAge}
+                  placeholder="Enter age"
+                  placeholderTextColor="#999"
+                  keyboardType="numeric"
+                />
+              </View>
+            </View>
 
-            <Text style={modalStyles.label}>Age</Text>
+            <Text style={modalStyles.label}>Daily Screen Time Limit (minutes)</Text>
             <TextInput
               style={modalStyles.input}
-              value={newChildAge}
-              onChangeText={setNewChildAge}
-              placeholder="Enter age"
+              value={newChildDailyScreenTime}
+              onChangeText={setNewChildDailyScreenTime}
+              placeholder="e.g., 60"
               placeholderTextColor="#999"
               keyboardType="numeric"
             />
+
+            <Text style={modalStyles.label}>Begin Time</Text>
+            <View style={modalStyles.timeInputContainer}>
+              <TextInput
+                style={[modalStyles.input, modalStyles.timeInput]}
+                value={newChildScreenTimeStart}
+                onChangeText={setNewChildScreenTimeStart}
+                placeholder="07:00"
+                placeholderTextColor="#999"
+                keyboardType="numeric"
+              />
+              <TouchableOpacity 
+                style={modalStyles.clockButton}
+                onPress={() => openTimePicker('newStart')}
+              >
+                <Text style={modalStyles.clockIcon}>🕐</Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={modalStyles.label}>End Time</Text>
+            <View style={modalStyles.timeInputContainer}>
+              <TextInput
+                style={[modalStyles.input, modalStyles.timeInput]}
+                value={newChildScreenTimeEnd}
+                onChangeText={setNewChildScreenTimeEnd}
+                placeholder="20:00"
+                placeholderTextColor="#999"
+                keyboardType="numeric"
+              />
+              <TouchableOpacity 
+                style={modalStyles.clockButton}
+                onPress={() => openTimePicker('newEnd')}
+              >
+                <Text style={modalStyles.clockIcon}>🕐</Text>
+              </TouchableOpacity>
+            </View>
+            </ScrollView>
 
             <View style={modalStyles.buttonRow}>
               <TouchableOpacity
@@ -1070,7 +1582,89 @@ const ChildrenManagementTab: React.FC = () => {
           </View>
         </View>
       </Modal>
-    </ScrollView>
+
+      {/* Time Picker Modal */}
+      <Modal
+        visible={showTimePicker}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowTimePicker(false)}
+      >
+        <View style={modalStyles.overlay}>
+          <View style={modalStyles.modalContainer}>
+            <Text style={modalStyles.modalTitle}>Select Time</Text>
+            
+            <View style={modalStyles.timePickerContainer}>
+              <View style={modalStyles.timePickerColumn}>
+                <Text style={modalStyles.timePickerLabel}>Hour</Text>
+                <ScrollView style={modalStyles.timePickerScroll} showsVerticalScrollIndicator={false}>
+                  {Array.from({ length: 24 }, (_, i) => (
+                    <TouchableOpacity
+                      key={i}
+                      style={[
+                        modalStyles.timePickerOption,
+                        selectedHour === i && modalStyles.timePickerOptionSelected
+                      ]}
+                      onPress={() => setSelectedHour(i)}
+                    >
+                      <Text style={[
+                        modalStyles.timePickerText,
+                        selectedHour === i && modalStyles.timePickerTextSelected
+                      ]}>
+                        {i.toString().padStart(2, '0')}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+              
+              <View style={modalStyles.timePickerColumn}>
+                <Text style={modalStyles.timePickerLabel}>Minute</Text>
+                <ScrollView style={modalStyles.timePickerScroll} showsVerticalScrollIndicator={false}>
+                  {Array.from({ length: 60 }, (_, i) => (
+                    <TouchableOpacity
+                      key={i}
+                      style={[
+                        modalStyles.timePickerOption,
+                        selectedMinute === i && modalStyles.timePickerOptionSelected
+                      ]}
+                      onPress={() => setSelectedMinute(i)}
+                    >
+                      <Text style={[
+                        modalStyles.timePickerText,
+                        selectedMinute === i && modalStyles.timePickerTextSelected
+                      ]}>
+                        {i.toString().padStart(2, '0')}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            </View>
+
+            <View style={modalStyles.buttonRow}>
+              <TouchableOpacity
+                style={[modalStyles.button, modalStyles.cancelButton]}
+                onPress={() => setShowTimePicker(false)}
+              >
+                <Text style={modalStyles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[modalStyles.button, modalStyles.saveButton]}
+                onPress={confirmTimeSelection}
+              >
+                <LinearGradient
+                  colors={enhancedTheme.gradients.primary}
+                  style={modalStyles.saveButtonGradient}
+                >
+                  <Text style={modalStyles.saveButtonText}>Confirm</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </View>
   );
 };
 
@@ -1172,13 +1766,12 @@ const childCardStyles = StyleSheet.create({
     fontWeight: '600'
   },
   addButton: {
-    marginTop: 8,
     borderRadius: 20,
     shadowColor: '#63B3ED',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 3
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 8
   },
   addButtonGradient: {
     padding: 16,
@@ -1212,7 +1805,7 @@ const modalStyles = StyleSheet.create({
     borderRadius: 20,
     padding: 24,
     width: '100%',
-    maxHeight: '80%',
+    maxHeight: '90%',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
@@ -1353,6 +1946,78 @@ const modalStyles = StyleSheet.create({
     fontSize: 18,
     color: '#63B3ED',
     fontWeight: 'bold'
+  },
+  timeInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8
+  },
+  timeInput: {
+    flex: 1
+  },
+  clockButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(99, 179, 237, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#63B3ED'
+  },
+  clockIcon: {
+    fontSize: 20
+  },
+  rowContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16
+  },
+  halfWidth: {
+    flex: 1,
+    marginRight: 8
+  },
+  timePickerContainer: {
+    flexDirection: 'row',
+    height: 200,
+    marginBottom: 20
+  },
+  timePickerColumn: {
+    flex: 1,
+    marginHorizontal: 8
+  },
+  timePickerLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#4A5568',
+    textAlign: 'center',
+    marginBottom: 8
+  },
+  timePickerScroll: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 8,
+    backgroundColor: '#F7FAFC'
+  },
+  timePickerOption: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0'
+  },
+  timePickerOptionSelected: {
+    backgroundColor: 'rgba(99, 179, 237, 0.1)',
+    borderColor: '#63B3ED'
+  },
+  timePickerText: {
+    fontSize: 16,
+    color: '#4A5568'
+  },
+  timePickerTextSelected: {
+    color: '#63B3ED',
+    fontWeight: '600'
   }
 });
 
@@ -1395,6 +2060,363 @@ const tabStyles = StyleSheet.create({
   }
 });
 
+// Reports styles
+const reportsStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 16
+  },
+  section: {
+    marginBottom: 24
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#2D3748',
+    marginBottom: 16
+  },
+  overviewGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12
+  },
+  overviewCard: {
+    flex: 1,
+    minWidth: '45%',
+    backgroundColor: '#FFF',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    ...enhancedTheme.shadows.soft
+  },
+  overviewNumber: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#63B3ED'
+  },
+  overviewLabel: {
+    fontSize: 12,
+    color: '#4A5568',
+    marginTop: 4,
+    textAlign: 'center'
+  },
+  childCard: {
+    marginBottom: 12,
+    borderRadius: 16,
+    overflow: 'hidden',
+    ...enhancedTheme.shadows.soft
+  },
+  childCardGradient: {
+    padding: 16
+  },
+  childHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12
+  },
+  childAvatar: {
+    fontSize: 32,
+    marginRight: 12
+  },
+  childInfo: {
+    flex: 1
+  },
+  childName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#2D3748'
+  },
+  childAge: {
+    fontSize: 14,
+    color: '#4A5568'
+  },
+  pointsBadge: {
+    backgroundColor: '#8EE3C2',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12
+  },
+  pointsText: {
+    color: '#0C1B2A',
+    fontWeight: '600',
+    fontSize: 14
+  },
+  progressSection: {
+    marginTop: 8
+  },
+  progressLabel: {
+    fontSize: 14,
+    color: '#4A5568',
+    marginBottom: 8
+  },
+  progressBar: {
+    height: 8,
+    backgroundColor: 'rgba(99, 179, 237, 0.2)',
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginBottom: 4
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#63B3ED',
+    borderRadius: 4
+  },
+  progressText: {
+    fontSize: 12,
+    color: '#63B3ED',
+    fontWeight: '600',
+    textAlign: 'right'
+  },
+  choreStats: {
+    flexDirection: 'row',
+    gap: 12
+  },
+  choreStatCard: {
+    flex: 1,
+    backgroundColor: '#FFF',
+    padding: 16,
+    borderRadius: 12,
+    ...enhancedTheme.shadows.soft
+  },
+  choreStatTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#4A5568',
+    marginBottom: 12
+  },
+  choreStatItem: {
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
+  choreStatEmoji: {
+    fontSize: 20,
+    marginRight: 8
+  },
+  choreStatName: {
+    flex: 1,
+    fontSize: 14,
+    color: '#2D3748',
+    fontWeight: '500'
+  },
+  choreStatValue: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#63B3ED'
+  },
+  screenTimeCard: {
+    backgroundColor: '#FFF',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    ...enhancedTheme.shadows.soft
+  },
+  screenTimeHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8
+  },
+  screenTimeChild: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2D3748'
+  },
+  screenTimeStatus: {
+    fontSize: 14,
+    color: '#4A5568'
+  },
+  screenTimeBar: {
+    height: 6,
+    backgroundColor: 'rgba(99, 179, 237, 0.2)',
+    borderRadius: 3,
+    overflow: 'hidden',
+    marginBottom: 8
+  },
+  screenTimeFill: {
+    height: '100%',
+    backgroundColor: '#63B3ED',
+    borderRadius: 3
+  },
+  screenTimeWeekly: {
+    fontSize: 12,
+    color: '#4A5568'
+  },
+  achievementCard: {
+    flexDirection: 'row',
+    backgroundColor: '#FFF',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    alignItems: 'center',
+    ...enhancedTheme.shadows.soft
+  },
+  achievementEmoji: {
+    fontSize: 24,
+    marginRight: 12
+  },
+  achievementContent: {
+    flex: 1
+  },
+  achievementTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2D3748',
+    marginBottom: 4
+  },
+  achievementDescription: {
+    fontSize: 14,
+    color: '#4A5568',
+    marginBottom: 4
+  },
+  achievementMeta: {
+    fontSize: 12,
+    color: '#63B3ED',
+    fontWeight: '500'
+  }
+});
+
+// Help styles
+const helpStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 16,
+    backgroundColor: '#FFFDF9'
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#2D3748',
+    marginBottom: 8,
+    textAlign: 'center'
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#4A5568',
+    marginBottom: 32,
+    textAlign: 'center',
+    lineHeight: 24
+  },
+  form: {
+    backgroundColor: '#FFF',
+    padding: 20,
+    borderRadius: 16,
+    marginBottom: 24,
+    ...enhancedTheme.shadows.soft
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2D3748',
+    marginBottom: 8,
+    marginTop: 16
+  },
+  input: {
+    backgroundColor: '#F7FAFC',
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    color: '#2D3748',
+    borderWidth: 1,
+    borderColor: '#E2E8F0'
+  },
+  textArea: {
+    height: 120,
+    textAlignVertical: 'top'
+  },
+  submitButton: {
+    marginTop: 24,
+    borderRadius: 12,
+    overflow: 'hidden'
+  },
+  submitButtonGradient: {
+    padding: 16,
+    alignItems: 'center',
+    borderRadius: 12
+  },
+  submitButtonText: {
+    color: '#FFF',
+    fontWeight: '600',
+    fontSize: 16
+  },
+  contactInfo: {
+    backgroundColor: '#FFF',
+    padding: 20,
+    borderRadius: 16,
+    ...enhancedTheme.shadows.soft
+  },
+  contactTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#2D3748',
+    marginBottom: 16,
+    textAlign: 'center'
+  },
+  contactItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12
+  },
+  contactIcon: {
+    fontSize: 20,
+    marginRight: 12,
+    width: 24
+  },
+  contactText: {
+    fontSize: 16,
+    color: '#4A5568',
+    flex: 1
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20
+  },
+  modalContainer: {
+    backgroundColor: '#FFF',
+    borderRadius: 20,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+    alignItems: 'center',
+    ...enhancedTheme.shadows.soft
+  },
+  modalIcon: {
+    fontSize: 48,
+    marginBottom: 16
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#2D3748',
+    marginBottom: 12,
+    textAlign: 'center'
+  },
+  modalMessage: {
+    fontSize: 16,
+    color: '#4A5568',
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 24
+  },
+  modalButton: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    width: '100%'
+  },
+  modalButtonGradient: {
+    padding: 16,
+    alignItems: 'center',
+    borderRadius: 12
+  },
+  modalButtonText: {
+    color: '#FFF',
+    fontWeight: '600',
+    fontSize: 16
+  }
+});
+
 export const ParentDashboard: React.FC = () => {
   const [isListening, setIsListening] = useState(false);
   const [activeTab, setActiveTab] = useState('Children');
@@ -1412,11 +2434,7 @@ export const ParentDashboard: React.FC = () => {
       case 'Chores':
         return <ChoresManagementTab />;
       case 'Reports':
-        return (
-          <View style={{ padding: 16 }}>
-            <Text style={{ fontSize: 20, color: '#2D3748' }}>Reports coming soon...</Text>
-          </View>
-        );
+        return <ReportsTab />;
       case 'AI Settings':
         return (
           <View style={{ padding: 16 }}>
@@ -1424,11 +2442,7 @@ export const ParentDashboard: React.FC = () => {
           </View>
         );
       case 'Help':
-        return (
-          <View style={{ padding: 16 }}>
-            <Text style={{ fontSize: 20, color: '#2D3748' }}>Help coming soon...</Text>
-          </View>
-        );
+        return <HelpTab />;
       default:
         return (
           <View style={{ padding: 16 }}>
@@ -1463,8 +2477,8 @@ export const ParentDashboard: React.FC = () => {
       {/* Tab Content */}
       {renderTabContent()}
 
-      {/* Only show voice button and examples on non-Children and non-Chores tabs */}
-      {activeTab !== 'Children' && activeTab !== 'Chores' && (
+      {/* Only show voice button and examples on non-Children, non-Chores, non-Reports, and non-Help tabs */}
+      {activeTab !== 'Children' && activeTab !== 'Chores' && activeTab !== 'Reports' && activeTab !== 'Help' && (
         <ScrollView style={{ flex: 1, padding: 16 }}>
         <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#2D3748', marginTop: 20 }}>
           Welcome to Chorelito AI!

@@ -3,6 +3,10 @@ import * as Speech from 'expo-speech';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { parseRules } from './nlu';
 import { httpsCallable, getFunctions } from 'firebase/functions';
+import { Alert } from 'react-native';
+
+// Check if Voice module is available (won't work in Expo Go)
+const isVoiceAvailable = Voice && typeof Voice.start === 'function';
 
 export function useVoiceSession() {
   const [listening, setListening] = useState(false);
@@ -68,6 +72,11 @@ export function useVoiceSession() {
   }, [functions, isProcessing, speakMessage]);
 
   useEffect(() => {
+    // Only set up voice event handlers if Voice is available
+    if (!isVoiceAvailable) {
+      return;
+    }
+    
     // Set up voice event handlers
     Voice.onSpeechStart = () => {
       setError(null);
@@ -154,6 +163,48 @@ export function useVoiceSession() {
       setError(null);
       setLastMessage('');
       
+      if (!isVoiceAvailable) {
+        // Fallback for Expo Go - show text input dialog
+        Alert.prompt(
+          'Voice Command',
+          'Voice recognition requires a development build. Enter your command as text:',
+          [
+            {
+              text: 'Cancel',
+              style: 'cancel',
+              onPress: () => setListening(false)
+            },
+            {
+              text: 'Send',
+              onPress: async (text) => {
+                if (text && text.trim()) {
+                  setFinalText(text);
+                  setListening(false);
+                  
+                  try {
+                    const parsed = parseRules(text);
+                    
+                    if (parsed.intent) {
+                      await handleIntent({ intent: parsed.intent, entities: parsed.entities });
+                    } else {
+                      await speakMessage('I did not understand that command. Please try again.');
+                    }
+                  } catch (error) {
+                    console.error('Voice processing error:', error);
+                    await speakMessage('Sorry, there was an error processing your request.');
+                  }
+                } else {
+                  setListening(false);
+                }
+              }
+            }
+          ],
+          'plain-text'
+        );
+        setListening(true);
+        return;
+      }
+      
       await Voice.start('en-US');
       setListening(true);
     } catch (startError) {
@@ -161,11 +212,13 @@ export function useVoiceSession() {
       setError('Failed to start voice recognition');
       await speakMessage('Sorry, I could not start listening. Please check your microphone permissions.');
     }
-  }, [speakMessage]);
+  }, [speakMessage, handleIntent]);
 
   const stop = useCallback(async () => {
     try {
-      await Voice.stop();
+      if (isVoiceAvailable) {
+        await Voice.stop();
+      }
       setListening(false);
     } catch (stopError) {
       console.error('Failed to stop voice recognition:', stopError);

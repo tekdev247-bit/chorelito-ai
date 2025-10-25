@@ -4032,7 +4032,7 @@ const OnboardingFlow: React.FC<{
 export const ParentDashboard: React.FC = () => {
   const [isListening, setIsListening] = useState(false);
   const [activeTab, setActiveTab] = useState('Home');
-  const [showOnboarding, setShowOnboarding] = useState(false); // Set to true to test onboarding
+  const [showOnboarding, setShowOnboarding] = useState(true); // Set to true to test onboarding
   const [onboardingStep, setOnboardingStep] = useState(0);
   
   // Onboarding form state

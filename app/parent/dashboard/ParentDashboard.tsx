@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Animated, StyleSheet, Alert, Modal, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useVoiceSession } from '../../lib/voice/useVoiceSession';
 
 // Enhanced theme
 const enhancedTheme = {
@@ -795,14 +796,18 @@ const SettingsTab: React.FC<{ onHomePress: () => void }> = ({ onHomePress }) => 
   );
 };
 
-// Home Tab Component
+// Home Tab Component  
 const HomeTab: React.FC = () => {
-  const [isListening, setIsListening] = useState(false);
+  const { listening, partial, finalText, lastMessage, error, isProcessing, start, stop, clearError } = useVoiceSession();
+  const [showTranscript, setShowTranscript] = useState(false);
 
-  const handleVoicePress = () => {
-    setIsListening(!isListening);
-    // TODO: Wire up actual voice recognition here
-    setTimeout(() => setIsListening(false), 3000); // Auto-stop after 3 seconds for demo
+  const handleVoicePress = async () => {
+    if (listening) {
+      await stop();
+    } else {
+      await start();
+      setShowTranscript(true);
+    }
   };
 
   return (
@@ -814,10 +819,53 @@ const HomeTab: React.FC = () => {
 
         {/* Voice Command Button */}
         <View style={voiceStyles.container}>
-          <VoiceWave onPress={handleVoicePress} isListening={isListening} />
+          <VoiceWave onPress={handleVoicePress} isListening={listening} />
           <Text style={{ fontSize: 14, fontWeight: '500', color: '#718096', marginTop: 16, textAlign: 'center' }}>
-            Tap to give voice command
+            {listening ? 'Listening...' : isProcessing ? 'Processing...' : 'Tap to give voice command'}
           </Text>
+          
+          {/* Voice Transcript Display */}
+          {showTranscript && (partial || finalText || lastMessage || error) && (
+            <View style={voiceTranscriptStyles.container}>
+              {listening && partial && (
+                <View style={voiceTranscriptStyles.section}>
+                  <Text style={voiceTranscriptStyles.label}>You said:</Text>
+                  <Text style={voiceTranscriptStyles.text}>{partial}</Text>
+                </View>
+              )}
+              
+              {finalText && !listening && (
+                <View style={voiceTranscriptStyles.section}>
+                  <Text style={voiceTranscriptStyles.label}>Command:</Text>
+                  <Text style={voiceTranscriptStyles.text}>{finalText}</Text>
+                </View>
+              )}
+              
+              {lastMessage && (
+                <View style={voiceTranscriptStyles.section}>
+                  <Text style={voiceTranscriptStyles.label}>Response:</Text>
+                  <Text style={[voiceTranscriptStyles.text, voiceTranscriptStyles.response]}>{lastMessage}</Text>
+                </View>
+              )}
+              
+              {error && (
+                <View style={voiceTranscriptStyles.section}>
+                  <Text style={voiceTranscriptStyles.label}>Error:</Text>
+                  <Text style={[voiceTranscriptStyles.text, voiceTranscriptStyles.error]}>{error}</Text>
+                </View>
+              )}
+              
+              <TouchableOpacity 
+                style={voiceTranscriptStyles.closeButton}
+                onPress={() => {
+                  setShowTranscript(false);
+                  clearError();
+                }}
+              >
+                <Text style={voiceTranscriptStyles.closeButtonText}>Clear</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
 
         {/* Voice Commands List */}
@@ -4472,6 +4520,53 @@ const onboardingStyles = StyleSheet.create({
   nextButtonText: {
     fontSize: 16,
     color: '#FFF',
+    fontWeight: '600',
+  },
+});
+
+// Voice Transcript Styles
+const voiceTranscriptStyles = StyleSheet.create({
+  container: {
+    marginTop: 24,
+    padding: 16,
+    backgroundColor: '#F7FAFC',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  section: {
+    marginBottom: 12,
+  },
+  label: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#718096',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+  },
+  text: {
+    fontSize: 14,
+    color: '#2D3748',
+    lineHeight: 20,
+  },
+  response: {
+    color: '#38A169',
+    fontWeight: '500',
+  },
+  error: {
+    color: '#E53E3E',
+    fontWeight: '500',
+  },
+  closeButton: {
+    marginTop: 8,
+    padding: 8,
+    backgroundColor: '#EDF2F7',
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  closeButtonText: {
+    fontSize: 14,
+    color: '#4A5568',
     fontWeight: '600',
   },
 });

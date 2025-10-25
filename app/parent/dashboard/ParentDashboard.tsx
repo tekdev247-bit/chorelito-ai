@@ -1,6 +1,6 @@
 // app/parent/dashboard/ParentDashboard.tsx
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Animated, StyleSheet, Alert, Modal, TextInput } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Animated, StyleSheet, Alert, Modal, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 // Enhanced theme
@@ -164,6 +164,23 @@ const SettingsTab: React.FC<{ onHomePress: () => void }> = ({ onHomePress }) => 
   const [showCreditsModal, setShowCreditsModal] = useState(false);
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(true);
+  const [onboardingStep, setOnboardingStep] = useState(0);
+  
+  // Onboarding form state
+  const [onboardingParentName, setOnboardingParentName] = useState('');
+  const [onboardingParentPhone, setOnboardingParentPhone] = useState('');
+  const [onboardingParentAvatar, setOnboardingParentAvatar] = useState('👩');
+  const [onboardingDefaultLimit, setOnboardingDefaultLimit] = useState('120');
+  const [onboardingQuietStart, setOnboardingQuietStart] = useState('07:00');
+  const [onboardingQuietEnd, setOnboardingQuietEnd] = useState('21:00');
+  const [onboardingMaxRequests, setOnboardingMaxRequests] = useState('3');
+  const [onboardingChildName, setOnboardingChildName] = useState('');
+  const [onboardingChildAge, setOnboardingChildAge] = useState('');
+  const [onboardingChildAvatar, setOnboardingChildAvatar] = useState('👦');
+  const [onboardingChildLimit, setOnboardingChildLimit] = useState('60');
+  const [onboardingChildStart, setOnboardingChildStart] = useState('07:00');
+  const [onboardingChildEnd, setOnboardingChildEnd] = useState('20:00');
 
   const openTimePicker = (type: 'start' | 'end') => {
     setTimePickerType(type);
@@ -185,6 +202,59 @@ const SettingsTab: React.FC<{ onHomePress: () => void }> = ({ onHomePress }) => 
     }
     
     setShowTimePicker(false);
+  };
+
+  // Onboarding navigation
+  const nextOnboardingStep = () => {
+    if (onboardingStep < 6) {
+      setOnboardingStep(onboardingStep + 1);
+    } else {
+      // Complete onboarding
+      completeOnboarding();
+    }
+  };
+
+  const prevOnboardingStep = () => {
+    if (onboardingStep > 0) {
+      setOnboardingStep(onboardingStep - 1);
+    }
+  };
+
+  const completeOnboarding = () => {
+    // Update parent info
+    setParentName(onboardingParentName);
+    setParentPhone(onboardingParentPhone);
+    setParentAvatar(onboardingParentAvatar);
+    
+    // Update default settings
+    setDefaultDailyLimit(onboardingDefaultLimit);
+    setQuietHoursStart(onboardingQuietStart);
+    setQuietHoursEnd(onboardingQuietEnd);
+    setMaxRequests(onboardingMaxRequests);
+    
+    // Add first child
+    if (onboardingChildName && onboardingChildAge) {
+      const newChild: Child = {
+        id: Date.now().toString(),
+        name: onboardingChildName,
+        age: parseInt(onboardingChildAge),
+        points: 0,
+        level: 1,
+        avatar: onboardingChildAvatar,
+        dailyScreenTimeLimit: parseInt(onboardingChildLimit),
+        screenTimeStartTime: onboardingChildStart,
+        screenTimeEndTime: onboardingChildEnd,
+      };
+      setChildren([newChild]);
+    }
+    
+    setShowOnboarding(false);
+    setActiveTab('Home');
+  };
+
+  const skipOnboarding = () => {
+    setShowOnboarding(false);
+    setActiveTab('Home');
   };
 
   return (
@@ -3391,9 +3461,594 @@ const helpStyles = StyleSheet.create({
   }
 });
 
+// Onboarding Flow Component
+const OnboardingFlow: React.FC<{
+  step: number;
+  onNext: () => void;
+  onPrev: () => void;
+  onSkip: () => void;
+  // Parent Profile
+  parentName: string;
+  setParentName: (name: string) => void;
+  parentPhone: string;
+  setParentPhone: (phone: string) => void;
+  parentAvatar: string;
+  setParentAvatar: (avatar: string) => void;
+  // Screen Time Policy
+  defaultLimit: string;
+  setDefaultLimit: (limit: string) => void;
+  quietStart: string;
+  setQuietStart: (start: string) => void;
+  quietEnd: string;
+  setQuietEnd: (end: string) => void;
+  maxRequests: string;
+  setMaxRequests: (requests: string) => void;
+  // First Child
+  childName: string;
+  setChildName: (name: string) => void;
+  childAge: string;
+  setChildAge: (age: string) => void;
+  childAvatar: string;
+  setChildAvatar: (avatar: string) => void;
+  childLimit: string;
+  setChildLimit: (limit: string) => void;
+  childStart: string;
+  setChildStart: (start: string) => void;
+  childEnd: string;
+  setChildEnd: (end: string) => void;
+}> = ({ 
+  step, onNext, onPrev, onSkip,
+  parentName, setParentName,
+  parentPhone, setParentPhone,
+  parentAvatar, setParentAvatar,
+  defaultLimit, setDefaultLimit,
+  quietStart, setQuietStart,
+  quietEnd, setQuietEnd,
+  maxRequests, setMaxRequests,
+  childName, setChildName,
+  childAge, setChildAge,
+  childAvatar, setChildAvatar,
+  childLimit, setChildLimit,
+  childStart, setChildStart,
+  childEnd, setChildEnd
+}) => {
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [timePickerType, setTimePickerType] = useState<'start' | 'end'>('start');
+  const [selectedHour, setSelectedHour] = useState(7);
+  const [selectedMinute, setSelectedMinute] = useState(0);
+
+  const openTimePicker = (type: 'start' | 'end') => {
+    setTimePickerType(type);
+    setShowTimePicker(true);
+    
+    const currentTime = type === 'start' ? quietStart : quietEnd;
+    const [hour, minute] = currentTime.split(':').map(Number);
+    setSelectedHour(hour);
+    setSelectedMinute(minute);
+  };
+
+  const confirmTimeSelection = () => {
+    const timeString = `${selectedHour.toString().padStart(2, '0')}:${selectedMinute.toString().padStart(2, '0')}`;
+    
+    if (timePickerType === 'start') {
+      setQuietStart(timeString);
+    } else {
+      setQuietEnd(timeString);
+    }
+    
+    setShowTimePicker(false);
+  };
+
+  const renderStep = () => {
+    switch (step) {
+      case 0:
+        return (
+          <View style={onboardingStyles.stepContainer}>
+            <Text style={onboardingStyles.stepTitle}>Welcome to Chorelito AI! 🎉</Text>
+            <Text style={onboardingStyles.stepDescription}>
+              Your AI-powered parenting assistant to help manage screen time and create healthy digital habits for your family.
+            </Text>
+            <View style={onboardingStyles.featureList}>
+              <View style={onboardingStyles.featureItem}>
+                <Text style={onboardingStyles.featureIcon}>🎯</Text>
+                <Text style={onboardingStyles.featureText}>Smart screen time management</Text>
+              </View>
+              <View style={onboardingStyles.featureItem}>
+                <Text style={onboardingStyles.featureIcon}>🎤</Text>
+                <Text style={onboardingStyles.featureText}>Voice commands for easy control</Text>
+              </View>
+              <View style={onboardingStyles.featureItem}>
+                <Text style={onboardingStyles.featureIcon}>📊</Text>
+                <Text style={onboardingStyles.featureText}>Progress tracking and reports</Text>
+              </View>
+              <View style={onboardingStyles.featureItem}>
+                <Text style={onboardingStyles.featureIcon}>🤖</Text>
+                <Text style={onboardingStyles.featureText}>AI-powered parenting assistance</Text>
+              </View>
+            </View>
+          </View>
+        );
+
+      case 1:
+        return (
+          <View style={onboardingStyles.stepContainer}>
+            <Text style={onboardingStyles.stepTitle}>Let's set up your profile 👤</Text>
+            <Text style={onboardingStyles.stepDescription}>
+              Tell us about yourself so we can personalize your experience.
+            </Text>
+            
+            <View style={onboardingStyles.inputGroup}>
+              <Text style={onboardingStyles.inputLabel}>Your Name</Text>
+              <TextInput
+                style={onboardingStyles.textInput}
+                value={parentName}
+                onChangeText={setParentName}
+                placeholder="Enter your name"
+              />
+            </View>
+
+            <View style={onboardingStyles.inputGroup}>
+              <Text style={onboardingStyles.inputLabel}>Phone Number</Text>
+              <TextInput
+                style={onboardingStyles.textInput}
+                value={parentPhone}
+                onChangeText={setParentPhone}
+                placeholder="+1 (555) 123-4567"
+                keyboardType="phone-pad"
+              />
+            </View>
+
+            <View style={onboardingStyles.inputGroup}>
+              <Text style={onboardingStyles.inputLabel}>Choose Your Avatar</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={onboardingStyles.avatarScroll}>
+                {['👩', '👨', '🧑', '👵', '👴'].map((emoji) => (
+                  <TouchableOpacity
+                    key={emoji}
+                    onPress={() => setParentAvatar(emoji)}
+                    style={[
+                      onboardingStyles.avatarOption,
+                      parentAvatar === emoji && onboardingStyles.avatarOptionSelected
+                    ]}
+                  >
+                    <Text style={onboardingStyles.avatarText}>{emoji}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          </View>
+        );
+
+      case 2:
+        return (
+          <View style={onboardingStyles.stepContainer}>
+            <Text style={onboardingStyles.stepTitle}>Screen Time Policy ⏰</Text>
+            <Text style={onboardingStyles.stepDescription}>
+              Set your family's default screen time rules. You can customize these for each child later.
+            </Text>
+            
+            <View style={onboardingStyles.inputGroup}>
+              <Text style={onboardingStyles.inputLabel}>Default Daily Limit (minutes)</Text>
+              <TextInput
+                style={onboardingStyles.textInput}
+                value={defaultLimit}
+                onChangeText={setDefaultLimit}
+                placeholder="120"
+                keyboardType="numeric"
+              />
+            </View>
+
+            <View style={onboardingStyles.inputGroup}>
+              <Text style={onboardingStyles.inputLabel}>Quiet Hours Start</Text>
+              <View style={onboardingStyles.timeInputContainer}>
+                <TextInput
+                  style={[onboardingStyles.textInput, onboardingStyles.timeInput]}
+                  value={quietStart}
+                  onChangeText={setQuietStart}
+                  placeholder="07:00"
+                  keyboardType="numeric"
+                />
+                <TouchableOpacity 
+                  style={onboardingStyles.clockButton}
+                  onPress={() => openTimePicker('start')}
+                >
+                  <Text style={onboardingStyles.clockIcon}>🕐</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={onboardingStyles.inputGroup}>
+              <Text style={onboardingStyles.inputLabel}>Quiet Hours End</Text>
+              <View style={onboardingStyles.timeInputContainer}>
+                <TextInput
+                  style={[onboardingStyles.textInput, onboardingStyles.timeInput]}
+                  value={quietEnd}
+                  onChangeText={setQuietEnd}
+                  placeholder="21:00"
+                  keyboardType="numeric"
+                />
+                <TouchableOpacity 
+                  style={onboardingStyles.clockButton}
+                  onPress={() => openTimePicker('end')}
+                >
+                  <Text style={onboardingStyles.clockIcon}>🕐</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={onboardingStyles.inputGroup}>
+              <Text style={onboardingStyles.inputLabel}>Max "Request More Time" per day</Text>
+              <TextInput
+                style={onboardingStyles.textInput}
+                value={maxRequests}
+                onChangeText={setMaxRequests}
+                placeholder="3"
+                keyboardType="numeric"
+              />
+            </View>
+          </View>
+        );
+
+      case 3:
+        return (
+          <View style={onboardingStyles.stepContainer}>
+            <Text style={onboardingStyles.stepTitle}>Add Your First Child 👶</Text>
+            <Text style={onboardingStyles.stepDescription}>
+              Let's create a profile for your first child. You can add more children later.
+            </Text>
+            
+            <View style={onboardingStyles.inputGroup}>
+              <Text style={onboardingStyles.inputLabel}>Child's Name</Text>
+              <TextInput
+                style={onboardingStyles.textInput}
+                value={childName}
+                onChangeText={setChildName}
+                placeholder="Enter child's name"
+              />
+            </View>
+
+            <View style={onboardingStyles.inputGroup}>
+              <Text style={onboardingStyles.inputLabel}>Age</Text>
+              <TextInput
+                style={onboardingStyles.textInput}
+                value={childAge}
+                onChangeText={setChildAge}
+                placeholder="8"
+                keyboardType="numeric"
+              />
+            </View>
+
+            <View style={onboardingStyles.inputGroup}>
+              <Text style={onboardingStyles.inputLabel}>Choose Avatar</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={onboardingStyles.avatarScroll}>
+                {['👦', '👧', '🧒', '👶'].map((emoji) => (
+                  <TouchableOpacity
+                    key={emoji}
+                    onPress={() => setChildAvatar(emoji)}
+                    style={[
+                      onboardingStyles.avatarOption,
+                      childAvatar === emoji && onboardingStyles.avatarOptionSelected
+                    ]}
+                  >
+                    <Text style={onboardingStyles.avatarText}>{emoji}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+
+            <View style={onboardingStyles.inputGroup}>
+              <Text style={onboardingStyles.inputLabel}>Daily Screen Time Limit (minutes)</Text>
+              <TextInput
+                style={onboardingStyles.textInput}
+                value={childLimit}
+                onChangeText={setChildLimit}
+                placeholder="60"
+                keyboardType="numeric"
+              />
+            </View>
+
+            <View style={onboardingStyles.inputGroup}>
+              <Text style={onboardingStyles.inputLabel}>Screen Time Allowed From</Text>
+              <View style={onboardingStyles.timeInputContainer}>
+                <TextInput
+                  style={[onboardingStyles.textInput, onboardingStyles.timeInput]}
+                  value={childStart}
+                  onChangeText={setChildStart}
+                  placeholder="07:00"
+                  keyboardType="numeric"
+                />
+                <TouchableOpacity 
+                  style={onboardingStyles.clockButton}
+                  onPress={() => openTimePicker('start')}
+                >
+                  <Text style={onboardingStyles.clockIcon}>🕐</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={onboardingStyles.inputGroup}>
+              <Text style={onboardingStyles.inputLabel}>Screen Time Allowed Until</Text>
+              <View style={onboardingStyles.timeInputContainer}>
+                <TextInput
+                  style={[onboardingStyles.textInput, onboardingStyles.timeInput]}
+                  value={childEnd}
+                  onChangeText={setChildEnd}
+                  placeholder="20:00"
+                  keyboardType="numeric"
+                />
+                <TouchableOpacity 
+                  style={onboardingStyles.clockButton}
+                  onPress={() => openTimePicker('end')}
+                >
+                  <Text style={onboardingStyles.clockIcon}>🕐</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        );
+
+      case 4:
+        return (
+          <View style={onboardingStyles.stepContainer}>
+            <Text style={onboardingStyles.stepTitle}>Permissions & Privacy 🔒</Text>
+            <Text style={onboardingStyles.stepDescription}>
+              We need a few permissions to provide the best experience for your family.
+            </Text>
+            
+            <View style={onboardingStyles.permissionItem}>
+              <Text style={onboardingStyles.permissionIcon}>🎤</Text>
+              <View style={onboardingStyles.permissionContent}>
+                <Text style={onboardingStyles.permissionTitle}>Microphone Access</Text>
+                <Text style={onboardingStyles.permissionDescription}>
+                  Required for voice commands and AI assistance
+                </Text>
+              </View>
+              <Text style={onboardingStyles.permissionStatus}>✅ Granted</Text>
+            </View>
+
+            <View style={onboardingStyles.permissionItem}>
+              <Text style={onboardingStyles.permissionIcon}>📷</Text>
+              <View style={onboardingStyles.permissionContent}>
+                <Text style={onboardingStyles.permissionTitle}>Camera Access</Text>
+                <Text style={onboardingStyles.permissionDescription}>
+                  Optional for profile photos and family moments
+                </Text>
+              </View>
+              <Text style={onboardingStyles.permissionStatus}>✅ Granted</Text>
+            </View>
+
+            <View style={onboardingStyles.permissionItem}>
+              <Text style={onboardingStyles.permissionIcon}>📱</Text>
+              <View style={onboardingStyles.permissionContent}>
+                <Text style={onboardingStyles.permissionTitle}>Screen Time Monitoring</Text>
+                <Text style={onboardingStyles.permissionDescription}>
+                  Essential for tracking and managing screen time
+                </Text>
+              </View>
+              <Text style={onboardingStyles.permissionStatus}>✅ Granted</Text>
+            </View>
+
+            <View style={onboardingStyles.privacyNote}>
+              <Text style={onboardingStyles.privacyNoteText}>
+                🔐 Your family's data is encrypted and never shared with third parties. 
+                We're committed to protecting your privacy.
+              </Text>
+            </View>
+          </View>
+        );
+
+      case 5:
+        return (
+          <View style={onboardingStyles.stepContainer}>
+            <Text style={onboardingStyles.stepTitle}>You're All Set! 🎉</Text>
+            <Text style={onboardingStyles.stepDescription}>
+              Welcome to your AI-powered parenting journey! Here's what you can do next:
+            </Text>
+            
+            <View style={onboardingStyles.nextStepsList}>
+              <View style={onboardingStyles.nextStepItem}>
+                <Text style={onboardingStyles.nextStepIcon}>🎤</Text>
+                <Text style={onboardingStyles.nextStepText}>Try voice commands on the Home screen</Text>
+              </View>
+              <View style={onboardingStyles.nextStepItem}>
+                <Text style={onboardingStyles.nextStepIcon}>👶</Text>
+                <Text style={onboardingStyles.nextStepText}>Add more children in the Children tab</Text>
+              </View>
+              <View style={onboardingStyles.nextStepItem}>
+                <Text style={onboardingStyles.nextStepIcon}>🧹</Text>
+                <Text style={onboardingStyles.nextStepText}>Create chores in the Chores tab</Text>
+              </View>
+              <View style={onboardingStyles.nextStepItem}>
+                <Text style={onboardingStyles.nextStepIcon}>⚙️</Text>
+                <Text style={onboardingStyles.nextStepText}>Customize settings anytime</Text>
+              </View>
+            </View>
+
+            <View style={onboardingStyles.completionMessage}>
+              <Text style={onboardingStyles.completionMessageText}>
+                Ready to start managing screen time with AI assistance? Let's go! 🚀
+              </Text>
+            </View>
+          </View>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <View style={onboardingStyles.container}>
+      <LinearGradient
+        colors={['#63B3ED', '#8EE3C2']}
+        style={onboardingStyles.header}
+      >
+        <Text style={onboardingStyles.headerTitle}>Chorelito AI</Text>
+        <Text style={onboardingStyles.headerSubtitle}>Setup</Text>
+      </LinearGradient>
+
+      <ScrollView 
+        style={onboardingStyles.scrollContent}
+        contentContainerStyle={onboardingStyles.scrollContentContainer}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={onboardingStyles.progressContainer}>
+          <View style={onboardingStyles.progressBar}>
+            <View 
+              style={[
+                onboardingStyles.progressFill, 
+                { width: `${((step + 1) / 6) * 100}%` }
+              ]} 
+            />
+          </View>
+          <Text style={onboardingStyles.progressText}>
+            Step {step + 1} of 6
+          </Text>
+        </View>
+
+        {renderStep()}
+
+        {/* Navigation buttons inside ScrollView */}
+        <View style={onboardingStyles.footerInline}>
+          <View style={onboardingStyles.buttonRow}>
+            {step > 0 && (
+              <TouchableOpacity
+                style={[onboardingStyles.button, onboardingStyles.backButton]}
+                onPress={onPrev}
+              >
+                <Text style={onboardingStyles.backButtonText}>Back</Text>
+              </TouchableOpacity>
+            )}
+            
+            <TouchableOpacity
+              style={[onboardingStyles.button, onboardingStyles.skipButton]}
+              onPress={onSkip}
+            >
+              <Text style={onboardingStyles.skipButtonText}>Skip</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[onboardingStyles.button, onboardingStyles.nextButton]}
+              onPress={onNext}
+            >
+              <LinearGradient
+                colors={enhancedTheme.gradients.primary}
+                style={onboardingStyles.nextButtonGradient}
+              >
+                <Text style={onboardingStyles.nextButtonText}>
+                  {step === 5 ? 'Get Started' : 'Next'}
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </ScrollView>
+
+      {/* Time Picker Modal */}
+      <Modal
+        visible={showTimePicker}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowTimePicker(false)}
+      >
+        <View style={modalStyles.overlay}>
+          <View style={modalStyles.modalContainer}>
+            <Text style={modalStyles.modalTitle}>Select Time</Text>
+            
+            <View style={modalStyles.timePickerContainer}>
+              <View style={modalStyles.timePickerColumn}>
+                <Text style={modalStyles.timePickerLabel}>Hour</Text>
+                <ScrollView style={modalStyles.timePickerScroll} showsVerticalScrollIndicator={false}>
+                  {Array.from({ length: 24 }, (_, i) => (
+                    <TouchableOpacity
+                      key={i}
+                      style={[
+                        modalStyles.timePickerOption,
+                        selectedHour === i && modalStyles.timePickerOptionSelected
+                      ]}
+                      onPress={() => setSelectedHour(i)}
+                    >
+                      <Text style={[
+                        modalStyles.timePickerText,
+                        selectedHour === i && modalStyles.timePickerTextSelected
+                      ]}>
+                        {i.toString().padStart(2, '0')}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+              
+              <View style={modalStyles.timePickerColumn}>
+                <Text style={modalStyles.timePickerLabel}>Minute</Text>
+                <ScrollView style={modalStyles.timePickerScroll} showsVerticalScrollIndicator={false}>
+                  {Array.from({ length: 60 }, (_, i) => (
+                    <TouchableOpacity
+                      key={i}
+                      style={[
+                        modalStyles.timePickerOption,
+                        selectedMinute === i && modalStyles.timePickerOptionSelected
+                      ]}
+                      onPress={() => setSelectedMinute(i)}
+                    >
+                      <Text style={[
+                        modalStyles.timePickerText,
+                        selectedMinute === i && modalStyles.timePickerTextSelected
+                      ]}>
+                        {i.toString().padStart(2, '0')}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            </View>
+
+            <View style={modalStyles.buttonRow}>
+              <TouchableOpacity
+                style={[modalStyles.button, modalStyles.cancelButton]}
+                onPress={() => setShowTimePicker(false)}
+              >
+                <Text style={modalStyles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[modalStyles.button, modalStyles.saveButton]}
+                onPress={confirmTimeSelection}
+              >
+                <LinearGradient
+                  colors={enhancedTheme.gradients.primary}
+                  style={modalStyles.saveButtonGradient}
+                >
+                  <Text style={modalStyles.saveButtonText}>Confirm</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
+};
+
 export const ParentDashboard: React.FC = () => {
   const [isListening, setIsListening] = useState(false);
   const [activeTab, setActiveTab] = useState('Home');
+  const [showOnboarding, setShowOnboarding] = useState(false); // Set to true to test onboarding
+  const [onboardingStep, setOnboardingStep] = useState(0);
+  
+  // Onboarding form state
+  const [onboardingParentName, setOnboardingParentName] = useState('');
+  const [onboardingParentPhone, setOnboardingParentPhone] = useState('');
+  const [onboardingParentAvatar, setOnboardingParentAvatar] = useState('👩');
+  const [onboardingDefaultLimit, setOnboardingDefaultLimit] = useState('120');
+  const [onboardingQuietStart, setOnboardingQuietStart] = useState('07:00');
+  const [onboardingQuietEnd, setOnboardingQuietEnd] = useState('21:00');
+  const [onboardingMaxRequests, setOnboardingMaxRequests] = useState('3');
+  const [onboardingChildName, setOnboardingChildName] = useState('');
+  const [onboardingChildAge, setOnboardingChildAge] = useState('');
+  const [onboardingChildAvatar, setOnboardingChildAvatar] = useState('👦');
+  const [onboardingChildLimit, setOnboardingChildLimit] = useState('60');
+  const [onboardingChildStart, setOnboardingChildStart] = useState('07:00');
+  const [onboardingChildEnd, setOnboardingChildEnd] = useState('20:00');
 
   const handleVoicePress = () => {
     setIsListening(!isListening);
@@ -3403,6 +4058,41 @@ export const ParentDashboard: React.FC = () => {
 
   const handleHomePress = () => {
     setActiveTab('Home'); // Navigate to home screen with voice command button
+  };
+
+  // Onboarding navigation
+  const nextOnboardingStep = () => {
+    if (onboardingStep < 5) {
+      setOnboardingStep(onboardingStep + 1);
+    } else {
+      // Complete onboarding
+      completeOnboarding();
+    }
+  };
+
+  const completeOnboarding = () => {
+    // TODO: Save onboarding data to persistent storage or context
+    // For now, just close onboarding and go to home
+    console.log('Onboarding completed with data:', {
+      parentName: onboardingParentName,
+      parentPhone: onboardingParentPhone,
+      childName: onboardingChildName,
+      childAge: onboardingChildAge
+    });
+    
+    setShowOnboarding(false);
+    setActiveTab('Home');
+  };
+
+  const prevOnboardingStep = () => {
+    if (onboardingStep > 0) {
+      setOnboardingStep(onboardingStep - 1);
+    }
+  };
+
+  const skipOnboarding = () => {
+    setShowOnboarding(false);
+    setActiveTab('Home');
   };
 
   const renderTabContent = () => {
@@ -3427,6 +4117,46 @@ export const ParentDashboard: React.FC = () => {
         );
     }
   };
+
+  // Show onboarding if it's the first time
+  if (showOnboarding) {
+    return <OnboardingFlow 
+      step={onboardingStep}
+      onNext={nextOnboardingStep}
+      onPrev={prevOnboardingStep}
+      onSkip={skipOnboarding}
+      // Step 0: Welcome
+      // Step 1: Parent Profile
+      parentName={onboardingParentName}
+      setParentName={setOnboardingParentName}
+      parentPhone={onboardingParentPhone}
+      setParentPhone={setOnboardingParentPhone}
+      parentAvatar={onboardingParentAvatar}
+      setParentAvatar={setOnboardingParentAvatar}
+      // Step 2: Screen Time Policy
+      defaultLimit={onboardingDefaultLimit}
+      setDefaultLimit={setOnboardingDefaultLimit}
+      quietStart={onboardingQuietStart}
+      setQuietStart={setOnboardingQuietStart}
+      quietEnd={onboardingQuietEnd}
+      setQuietEnd={setOnboardingQuietEnd}
+      maxRequests={onboardingMaxRequests}
+      setMaxRequests={setOnboardingMaxRequests}
+      // Step 3: First Child
+      childName={onboardingChildName}
+      setChildName={setOnboardingChildName}
+      childAge={onboardingChildAge}
+      setChildAge={setOnboardingChildAge}
+      childAvatar={onboardingChildAvatar}
+      setChildAvatar={setOnboardingChildAvatar}
+      childLimit={onboardingChildLimit}
+      setChildLimit={setOnboardingChildLimit}
+      childStart={onboardingChildStart}
+      setChildStart={setOnboardingChildStart}
+      childEnd={onboardingChildEnd}
+      setChildEnd={setOnboardingChildEnd}
+    />;
+  }
 
   return (
     <View style={{ flex: 1, backgroundColor: '#FFFDF9' }}>
@@ -3456,3 +4186,292 @@ export const ParentDashboard: React.FC = () => {
     </View>
   );
 };
+
+// Onboarding Styles
+const onboardingStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#FFFDF9',
+  },
+  keyboardContainer: {
+    flex: 1,
+  },
+  header: {
+    padding: 24,
+    paddingTop: 60,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#FFF',
+    marginBottom: 4,
+  },
+  headerSubtitle: {
+    fontSize: 16,
+    color: '#FFF',
+    opacity: 0.9,
+  },
+  content: {
+    flex: 1,
+    padding: 20,
+  },
+  scrollContent: {
+    flex: 1,
+  },
+  scrollContentContainer: {
+    padding: 20,
+    paddingBottom: 20,
+  },
+  progressContainer: {
+    marginBottom: 24,
+  },
+  progressBar: {
+    height: 4,
+    backgroundColor: '#E2E8F0',
+    borderRadius: 2,
+    marginBottom: 8,
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#63B3ED',
+    borderRadius: 2,
+  },
+  progressText: {
+    fontSize: 14,
+    color: '#718096',
+    textAlign: 'center',
+  },
+  stepContainer: {
+    flex: 1,
+  },
+  stepTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#2D3748',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  stepDescription: {
+    fontSize: 16,
+    color: '#718096',
+    lineHeight: 24,
+    marginBottom: 24,
+    textAlign: 'center',
+  },
+  featureList: {
+    marginTop: 20,
+  },
+  featureItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingHorizontal: 16,
+  },
+  featureIcon: {
+    fontSize: 24,
+    marginRight: 16,
+  },
+  featureText: {
+    fontSize: 16,
+    color: '#4A5568',
+    flex: 1,
+  },
+  inputGroup: {
+    marginBottom: 20,
+  },
+  inputLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2D3748',
+    marginBottom: 8,
+  },
+  textInput: {
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    backgroundColor: '#FFF',
+    color: '#2D3748',
+  },
+  avatarScroll: {
+    marginTop: 8,
+  },
+  avatarOption: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#F7FAFC',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  avatarOptionSelected: {
+    borderColor: '#63B3ED',
+    backgroundColor: '#EBF8FF',
+  },
+  avatarText: {
+    fontSize: 24,
+  },
+  timeInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  timeInput: {
+    flex: 1,
+    marginRight: 12,
+  },
+  clockButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#F7FAFC',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  clockIcon: {
+    fontSize: 20,
+  },
+  permissionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#F7FAFC',
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  permissionIcon: {
+    fontSize: 24,
+    marginRight: 16,
+  },
+  permissionContent: {
+    flex: 1,
+  },
+  permissionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2D3748',
+    marginBottom: 4,
+  },
+  permissionDescription: {
+    fontSize: 14,
+    color: '#718096',
+  },
+  permissionStatus: {
+    fontSize: 16,
+    color: '#38A169',
+    fontWeight: '600',
+  },
+  privacyNote: {
+    backgroundColor: '#EBF8FF',
+    padding: 16,
+    borderRadius: 12,
+    marginTop: 20,
+  },
+  privacyNoteText: {
+    fontSize: 14,
+    color: '#2B6CB0',
+    lineHeight: 20,
+    textAlign: 'center',
+  },
+  nextStepsList: {
+    marginTop: 20,
+  },
+  nextStepItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingHorizontal: 16,
+  },
+  nextStepIcon: {
+    fontSize: 20,
+    marginRight: 16,
+  },
+  nextStepText: {
+    fontSize: 16,
+    color: '#4A5568',
+    flex: 1,
+  },
+  completionMessage: {
+    backgroundColor: '#F0FFF4',
+    padding: 20,
+    borderRadius: 12,
+    marginTop: 24,
+    alignItems: 'center',
+  },
+  completionMessageText: {
+    fontSize: 16,
+    color: '#22543D',
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  footer: {
+    padding: 20,
+    paddingBottom: 40,
+    backgroundColor: '#FFFDF9',
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+    minHeight: 100,
+  },
+  footerInline: {
+    padding: 20,
+    paddingTop: 30,
+    paddingBottom: 20,
+    backgroundColor: '#FFFDF9',
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+    marginTop: 30,
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  button: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    minWidth: 80,
+    alignItems: 'center',
+  },
+  backButton: {
+    backgroundColor: '#F7FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  backButtonText: {
+    fontSize: 16,
+    color: '#4A5568',
+    fontWeight: '600',
+  },
+  skipButton: {
+    backgroundColor: 'transparent',
+  },
+  skipButtonText: {
+    fontSize: 16,
+    color: '#718096',
+    fontWeight: '500',
+  },
+  nextButton: {
+    backgroundColor: 'transparent',
+  },
+  nextButtonGradient: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    minWidth: 100,
+    alignItems: 'center',
+  },
+  nextButtonText: {
+    fontSize: 16,
+    color: '#FFF',
+    fontWeight: '600',
+  },
+});

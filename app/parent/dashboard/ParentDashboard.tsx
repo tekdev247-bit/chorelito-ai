@@ -1,8 +1,20 @@
 // app/parent/dashboard/ParentDashboard.tsx
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Animated, StyleSheet, Alert, Modal, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Animated, StyleSheet, Alert, Modal, TextInput, KeyboardAvoidingView, Platform, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useVoiceSession } from '../../lib/voice/useVoiceSession';
+import { useAuth } from '../../lib/authContext';
+import { 
+  parentService, 
+  childService, 
+  choreService,
+  familyChoreService,
+  generateUniqueId,
+  normalizePhone,
+  type Child as ChildType,
+  type FamilyChore as FamilyChoreType,
+  type Chore as ChoreType
+} from '../../lib/firestore';
 
 // Enhanced theme
 const enhancedTheme = {
@@ -151,30 +163,28 @@ const HomeButton: React.FC<{ onPress: () => void }> = ({ onPress }) => {
 
 // Settings Tab Component
 const SettingsTab: React.FC<{ onHomePress: () => void }> = ({ onHomePress }) => {
+  const { parentId, clearAuth } = useAuth();
   const [parentName, setParentName] = useState('Sarah Johnson');
   const [parentPhone, setParentPhone] = useState('+1 (555) 123-4567');
   const [parentAvatar, setParentAvatar] = useState('👩');
   const [defaultDailyLimit, setDefaultDailyLimit] = useState('120');
-  const [quietHoursStart, setQuietHoursStart] = useState('07:00');
-  const [quietHoursEnd, setQuietHoursEnd] = useState('21:00');
+  const [quietHoursStart, setQuietHoursStart] = useState('21:00');
+  const [quietHoursEnd, setQuietHoursEnd] = useState('07:00');
   const [maxRequests, setMaxRequests] = useState('3');
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [timePickerType, setTimePickerType] = useState<'start' | 'end'>('start');
   const [selectedHour, setSelectedHour] = useState(7);
   const [selectedMinute, setSelectedMinute] = useState(0);
+  const [selectedAmPm, setSelectedAmPm] = useState<'AM' | 'PM'>('AM');
   const [showCreditsModal, setShowCreditsModal] = useState(false);
-  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
-  const [showTermsModal, setShowTermsModal] = useState(false);
-  const [showOnboarding, setShowOnboarding] = useState(true);
-  const [onboardingStep, setOnboardingStep] = useState(0);
   
   // Onboarding form state
   const [onboardingParentName, setOnboardingParentName] = useState('');
   const [onboardingParentPhone, setOnboardingParentPhone] = useState('');
   const [onboardingParentAvatar, setOnboardingParentAvatar] = useState('👩');
   const [onboardingDefaultLimit, setOnboardingDefaultLimit] = useState('120');
-  const [onboardingQuietStart, setOnboardingQuietStart] = useState('07:00');
-  const [onboardingQuietEnd, setOnboardingQuietEnd] = useState('21:00');
+  const [onboardingQuietStart, setOnboardingQuietStart] = useState('21:00');
+  const [onboardingQuietEnd, setOnboardingQuietEnd] = useState('07:00');
   const [onboardingMaxRequests, setOnboardingMaxRequests] = useState('3');
   const [onboardingChildName, setOnboardingChildName] = useState('');
   const [onboardingChildAge, setOnboardingChildAge] = useState('');
@@ -182,19 +192,249 @@ const SettingsTab: React.FC<{ onHomePress: () => void }> = ({ onHomePress }) => 
   const [onboardingChildLimit, setOnboardingChildLimit] = useState('60');
   const [onboardingChildStart, setOnboardingChildStart] = useState('07:00');
   const [onboardingChildEnd, setOnboardingChildEnd] = useState('20:00');
+  
+  // Country codes and phone formatting
+  const countryCodes = [
+    { code: '+1', country: 'USA', flag: '🇺🇸' },
+    { code: '+1', country: 'Canada', flag: '🇨🇦' },
+    { code: '+44', country: 'UK', flag: '🇬🇧' },
+    { code: '+33', country: 'France', flag: '🇫🇷' },
+    { code: '+49', country: 'Germany', flag: '🇩🇪' },
+    { code: '+81', country: 'Japan', flag: '🇯🇵' },
+    { code: '+86', country: 'China', flag: '🇨🇳' },
+    { code: '+91', country: 'India', flag: '🇮🇳' },
+    { code: '+61', country: 'Australia', flag: '🇦🇺' },
+    { code: '+55', country: 'Brazil', flag: '🇧🇷' },
+    { code: '+52', country: 'Mexico', flag: '🇲🇽' },
+    { code: '+39', country: 'Italy', flag: '🇮🇹' },
+    { code: '+34', country: 'Spain', flag: '🇪🇸' },
+    { code: '+31', country: 'Netherlands', flag: '🇳🇱' },
+    { code: '+46', country: 'Sweden', flag: '🇸🇪' },
+    { code: '+47', country: 'Norway', flag: '🇳🇴' },
+    { code: '+45', country: 'Denmark', flag: '🇩🇰' },
+    { code: '+41', country: 'Switzerland', flag: '🇨🇭' },
+    { code: '+43', country: 'Austria', flag: '🇦🇹' },
+    { code: '+32', country: 'Belgium', flag: '🇧🇪' }
+  ];
+
+  const [selectedCountry, setSelectedCountry] = useState(countryCodes[0]);
+  const [formattedPhone, setFormattedPhone] = useState('');
+  const [showCountryModal, setShowCountryModal] = useState(false);
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(true);
+  const [onboardingStep, setOnboardingStep] = useState(0);
+
+  // Load parent settings on mount
+  useEffect(() => {
+    if (parentId) {
+      loadParentSettings();
+    }
+  }, [parentId]);
+
+  // Initialize phone formatting when parentPhone changes
+  useEffect(() => {
+    if (parentPhone) {
+      console.log('Parsing phone number:', parentPhone);
+      const { country, formatted } = parsePhoneNumber(parentPhone);
+      console.log('Parsed result:', { country: country.code, formatted });
+      setSelectedCountry(country);
+      setFormattedPhone(formatted);
+    }
+  }, [parentPhone]);
+
+  const loadParentSettings = async () => {
+    try {
+      const parent = await parentService.getParent(parentId!);
+      if (parent) {
+        setParentName(parent.name);
+        setParentPhone(parent.phone);
+        setParentAvatar(parent.avatar);
+        
+        if (parent.settings) {
+          setDefaultDailyLimit(parent.settings.defaultDailyLimit.toString());
+          setQuietHoursStart(parent.settings.quietHoursStart);
+          setQuietHoursEnd(parent.settings.quietHoursEnd);
+          setMaxRequests(parent.settings.maxRequests.toString());
+        }
+      }
+    } catch (error) {
+      console.error('Error loading parent settings:', error);
+    }
+  };
+
+  const handleSaveParent = async () => {
+    if (parentId) {
+      try {
+        const fullPhoneNumber = getFullPhoneNumber(formattedPhone, selectedCountry.code);
+        
+        await parentService.saveParent(parentId, {
+          name: parentName,
+          phone: fullPhoneNumber,
+          avatar: parentAvatar,
+        });
+        Alert.alert("Success", "Profile updated!");
+      } catch (error) {
+        console.error("Error saving parent:", error);
+        Alert.alert("Error", "Failed to update profile");
+      }
+    }
+  };
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await clearAuth();
+            } catch (error) {
+              console.error('Error logging out:', error);
+              Alert.alert('Error', 'Failed to logout. Please try again.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleSaveSettings = async () => {
+    if (parentId) {
+      try {
+        const fullPhoneNumber = getFullPhoneNumber(formattedPhone, selectedCountry.code);
+        
+        await parentService.updateSettings(parentId, {
+          defaultDailyLimit: parseInt(defaultDailyLimit),
+          quietHoursStart: quietHoursStart,
+          quietHoursEnd: quietHoursEnd,
+          maxRequests: parseInt(maxRequests),
+        });
+
+        // Update parent phone separately
+        await parentService.saveParent(parentId, {
+          phone: fullPhoneNumber,
+        });
+        Alert.alert("Success", "Settings saved!");
+      } catch (error) {
+        console.error("Error saving settings:", error);
+        Alert.alert("Error", "Failed to save settings");
+      }
+    }
+  };
+
+  // Time conversion functions
+  const convert24To12 = (time24: string): { hour: number; minute: number; amPm: 'AM' | 'PM' } => {
+    const [hour, minute] = time24.split(':').map(Number);
+    const hour12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+    const amPm: 'AM' | 'PM' = hour < 12 ? 'AM' : 'PM';
+    return { hour: hour12, minute, amPm };
+  };
+
+  const convert12To24 = (hour12: number, minute: number, amPm: 'AM' | 'PM') => {
+    let hour24 = hour12;
+    if (amPm === 'AM' && hour12 === 12) {
+      hour24 = 0;
+    } else if (amPm === 'PM' && hour12 !== 12) {
+      hour24 = hour12 + 12;
+    }
+    return `${hour24.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+  };
+
+  const formatTimeForDisplay = (time24: string) => {
+    const { hour, minute, amPm } = convert24To12(time24);
+    return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')} ${amPm}`;
+  };
+
+  // Phone formatting functions
+  const formatPhoneNumber = (input: string) => {
+    // Remove all non-numeric characters
+    const cleaned = input.replace(/\D/g, '');
+    
+    // Limit to 10 digits for US/Canada
+    const limited = cleaned.slice(0, 10);
+    
+    // If empty, return empty string
+    if (limited.length === 0) {
+      return '';
+    }
+    
+    // Format as (###) ###-####
+    if (limited.length <= 3) {
+      return limited;
+    } else if (limited.length <= 6) {
+      return `(${limited.slice(0, 3)}) ${limited.slice(3)}`;
+    } else {
+      return `(${limited.slice(0, 3)}) ${limited.slice(3, 6)}-${limited.slice(6)}`;
+    }
+  };
+
+  const getFullPhoneNumber = (formatted: string, countryCode: string) => {
+    const cleaned = formatted.replace(/\D/g, '');
+    return `${countryCode}${cleaned}`;
+  };
+
+  const parsePhoneNumber = (fullNumber: string) => {
+    // If no number provided, return defaults
+    if (!fullNumber) {
+      return { country: countryCodes[0], formatted: '' };
+    }
+
+    // Remove all non-numeric characters except leading +
+    let cleaned = fullNumber.replace(/[^\d+]/g, '');
+    
+    // Extract country code (default to +1)
+    let code = '+1';
+    let number = cleaned;
+    
+    // Try to match country codes (starting with longer codes first to avoid partial matches)
+    const sortedCodes = countryCodes.sort((a, b) => b.code.length - a.code.length);
+    let matched = false;
+    
+    for (const country of sortedCodes) {
+      if (cleaned.startsWith(country.code)) {
+        code = country.code;
+        number = cleaned.slice(country.code.length);
+        matched = true;
+        break;
+      }
+    }
+    
+    // If no match and starts with +, remove it
+    if (!matched && cleaned.startsWith('+')) {
+      code = '+1';
+      number = cleaned.slice(1);
+    } else if (!matched && !cleaned.startsWith('+')) {
+      // No country code, default to +1
+      code = '+1';
+      number = cleaned;
+    }
+    
+    const country = countryCodes.find(c => c.code === code) || countryCodes[0];
+    const formatted = formatPhoneNumber(number);
+    return { country, formatted };
+  };
 
   const openTimePicker = (type: 'start' | 'end') => {
     setTimePickerType(type);
     setShowTimePicker(true);
     
     const currentTime = type === 'start' ? quietHoursStart : quietHoursEnd;
-    const [hour, minute] = currentTime.split(':').map(Number);
+    const { hour, minute, amPm } = convert24To12(currentTime);
     setSelectedHour(hour);
     setSelectedMinute(minute);
+    setSelectedAmPm(amPm);
   };
 
   const confirmTimeSelection = () => {
-    const timeString = `${selectedHour.toString().padStart(2, '0')}:${selectedMinute.toString().padStart(2, '0')}`;
+    const timeString = convert12To24(selectedHour, selectedMinute, selectedAmPm);
     
     if (timePickerType === 'start') {
       setQuietHoursStart(timeString);
@@ -209,9 +449,6 @@ const SettingsTab: React.FC<{ onHomePress: () => void }> = ({ onHomePress }) => 
   const nextOnboardingStep = () => {
     if (onboardingStep < 6) {
       setOnboardingStep(onboardingStep + 1);
-    } else {
-      // Complete onboarding
-      completeOnboarding();
     }
   };
 
@@ -221,42 +458,6 @@ const SettingsTab: React.FC<{ onHomePress: () => void }> = ({ onHomePress }) => 
     }
   };
 
-  const completeOnboarding = () => {
-    // Update parent info
-    setParentName(onboardingParentName);
-    setParentPhone(onboardingParentPhone);
-    setParentAvatar(onboardingParentAvatar);
-    
-    // Update default settings
-    setDefaultDailyLimit(onboardingDefaultLimit);
-    setQuietHoursStart(onboardingQuietStart);
-    setQuietHoursEnd(onboardingQuietEnd);
-    setMaxRequests(onboardingMaxRequests);
-    
-    // Add first child
-    if (onboardingChildName && onboardingChildAge) {
-      const newChild: Child = {
-        id: Date.now().toString(),
-        name: onboardingChildName,
-        age: parseInt(onboardingChildAge),
-        points: 0,
-        level: 1,
-        avatar: onboardingChildAvatar,
-        dailyScreenTimeLimit: parseInt(onboardingChildLimit),
-        screenTimeStartTime: onboardingChildStart,
-        screenTimeEndTime: onboardingChildEnd,
-      };
-      setChildren([newChild]);
-    }
-    
-    setShowOnboarding(false);
-    setActiveTab('Home');
-  };
-
-  const skipOnboarding = () => {
-    setShowOnboarding(false);
-    setActiveTab('Home');
-  };
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: '#FFFDF9' }}>
@@ -286,13 +487,27 @@ const SettingsTab: React.FC<{ onHomePress: () => void }> = ({ onHomePress }) => 
 
           <View style={settingsStyles.settingItem}>
             <Text style={settingsStyles.settingLabel}>Parent Phone</Text>
-            <TextInput
-              style={settingsStyles.settingInput}
-              value={parentPhone}
-              onChangeText={setParentPhone}
-              placeholder="Enter phone number"
-              keyboardType="phone-pad"
-            />
+            <View style={settingsStyles.phoneInputContainer}>
+              <TouchableOpacity 
+                style={settingsStyles.countryButton}
+                onPress={() => setShowCountryModal(true)}
+              >
+                <Text style={settingsStyles.countryFlag}>{selectedCountry.flag}</Text>
+                <Text style={settingsStyles.countryCode}>{selectedCountry.code}</Text>
+                <Text style={settingsStyles.countryArrow}>▼</Text>
+              </TouchableOpacity>
+              <TextInput
+                style={[settingsStyles.settingInput, settingsStyles.phoneInput]}
+                value={formattedPhone}
+                onChangeText={(text) => {
+                  const formatted = formatPhoneNumber(text);
+                  setFormattedPhone(formatted);
+                }}
+                placeholder="(555) 123-4567"
+                keyboardType="phone-pad"
+                maxLength={14} // (###) ###-####
+              />
+            </View>
           </View>
 
           <View style={settingsStyles.settingItem}>
@@ -317,7 +532,11 @@ const SettingsTab: React.FC<{ onHomePress: () => void }> = ({ onHomePress }) => 
             <Text style={settingsStyles.actionButtonText}>Change Password</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={[settingsStyles.actionButton, settingsStyles.logoutButton]}>
+          <TouchableOpacity style={[settingsStyles.actionButton, settingsStyles.saveButton]} onPress={handleSaveParent}>
+            <Text style={[settingsStyles.actionButtonText, settingsStyles.saveButtonText]}>Save Profile</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={[settingsStyles.actionButton, settingsStyles.logoutButton]} onPress={handleLogout}>
             <Text style={[settingsStyles.actionButtonText, settingsStyles.logoutButtonText]}>Logout</Text>
           </TouchableOpacity>
         </View>
@@ -342,10 +561,11 @@ const SettingsTab: React.FC<{ onHomePress: () => void }> = ({ onHomePress }) => 
             <View style={settingsStyles.timeInputContainer}>
               <TextInput
                 style={[settingsStyles.settingInput, settingsStyles.timeInput]}
-                value={quietHoursStart}
+                value={formatTimeForDisplay(quietHoursStart)}
                 onChangeText={setQuietHoursStart}
-                placeholder="07:00"
+                placeholder="09:00 PM"
                 keyboardType="numeric"
+                editable={false}
               />
               <TouchableOpacity 
                 style={settingsStyles.clockButton}
@@ -361,10 +581,11 @@ const SettingsTab: React.FC<{ onHomePress: () => void }> = ({ onHomePress }) => 
             <View style={settingsStyles.timeInputContainer}>
               <TextInput
                 style={[settingsStyles.settingInput, settingsStyles.timeInput]}
-                value={quietHoursEnd}
+                value={formatTimeForDisplay(quietHoursEnd)}
                 onChangeText={setQuietHoursEnd}
-                placeholder="21:00"
+                placeholder="07:00 AM"
                 keyboardType="numeric"
+                editable={false}
               />
               <TouchableOpacity 
                 style={settingsStyles.clockButton}
@@ -400,6 +621,10 @@ const SettingsTab: React.FC<{ onHomePress: () => void }> = ({ onHomePress }) => 
               </TouchableOpacity>
             </View>
           </View>
+
+          <TouchableOpacity style={[settingsStyles.actionButton, settingsStyles.saveButton]} onPress={handleSaveSettings}>
+            <Text style={[settingsStyles.actionButtonText, settingsStyles.saveButtonText]}>Save Settings</Text>
+          </TouchableOpacity>
         </View>
 
         {/* 3. Data & Privacy */}
@@ -472,6 +697,48 @@ const SettingsTab: React.FC<{ onHomePress: () => void }> = ({ onHomePress }) => 
         </View>
       </View>
 
+      {/* Country Selection Modal */}
+      <Modal
+        visible={showCountryModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowCountryModal(false)}
+      >
+        <View style={modalStyles.overlay}>
+          <View style={modalStyles.modalContainer}>
+            <View style={modalStyles.modalHeader}>
+              <Text style={modalStyles.modalTitle}>Select Country</Text>
+              <TouchableOpacity
+                style={modalStyles.closeButton}
+                onPress={() => setShowCountryModal(false)}
+              >
+                <Text style={modalStyles.closeButtonText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView style={modalStyles.countryList}>
+              {countryCodes.map((country, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    modalStyles.countryOption,
+                    selectedCountry.code === country.code && selectedCountry.country === country.country && modalStyles.countryOptionSelected
+                  ]}
+                  onPress={() => {
+                    setSelectedCountry(country);
+                    setShowCountryModal(false);
+                  }}
+                >
+                  <Text style={settingsStyles.countryFlag}>{country.flag}</Text>
+                  <Text style={modalStyles.countryName}>{country.country}</Text>
+                  <Text style={modalStyles.countryCodeText}>{country.code}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
       {/* Time Picker Modal */}
       <Modal
         visible={showTimePicker}
@@ -487,23 +754,26 @@ const SettingsTab: React.FC<{ onHomePress: () => void }> = ({ onHomePress }) => 
               <View style={modalStyles.timePickerColumn}>
                 <Text style={modalStyles.timePickerLabel}>Hour</Text>
                 <ScrollView style={modalStyles.timePickerScroll} showsVerticalScrollIndicator={false}>
-                  {Array.from({ length: 24 }, (_, i) => (
-                    <TouchableOpacity
-                      key={i}
-                      style={[
-                        modalStyles.timePickerOption,
-                        selectedHour === i && modalStyles.timePickerOptionSelected
-                      ]}
-                      onPress={() => setSelectedHour(i)}
-                    >
-                      <Text style={[
-                        modalStyles.timePickerText,
-                        selectedHour === i && modalStyles.timePickerTextSelected
-                      ]}>
-                        {i.toString().padStart(2, '0')}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
+                  {Array.from({ length: 12 }, (_, i) => {
+                    const hour = i + 1;
+                    return (
+                      <TouchableOpacity
+                        key={hour}
+                        style={[
+                          modalStyles.timePickerOption,
+                          selectedHour === hour && modalStyles.timePickerOptionSelected
+                        ]}
+                        onPress={() => setSelectedHour(hour)}
+                      >
+                        <Text style={[
+                          modalStyles.timePickerText,
+                          selectedHour === hour && modalStyles.timePickerTextSelected
+                        ]}>
+                          {hour.toString().padStart(2, '0')}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
                 </ScrollView>
               </View>
               
@@ -524,6 +794,29 @@ const SettingsTab: React.FC<{ onHomePress: () => void }> = ({ onHomePress }) => 
                         selectedMinute === i && modalStyles.timePickerTextSelected
                       ]}>
                         {i.toString().padStart(2, '0')}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+
+              <View style={modalStyles.timePickerColumn}>
+                <Text style={modalStyles.timePickerLabel}>AM/PM</Text>
+                <ScrollView style={modalStyles.timePickerScroll} showsVerticalScrollIndicator={false}>
+                  {['AM', 'PM'].map((period) => (
+                    <TouchableOpacity
+                      key={period}
+                      style={[
+                        modalStyles.timePickerOption,
+                        selectedAmPm === period && modalStyles.timePickerOptionSelected
+                      ]}
+                      onPress={() => setSelectedAmPm(period as 'AM' | 'PM')}
+                    >
+                      <Text style={[
+                        modalStyles.timePickerText,
+                        selectedAmPm === period && modalStyles.timePickerTextSelected
+                      ]}>
+                        {period}
                       </Text>
                     </TouchableOpacity>
                   ))}
@@ -916,14 +1209,11 @@ interface Chore {
   completed: boolean;
 }
 
-const ChoresManagementTab: React.FC<{ onHomePress: () => void }> = ({ onHomePress }) => {
-  const [chores, setChores] = useState<Chore[]>([
-    { id: '1', name: 'Clean room', points: 5, emoji: '🧹', assignedTo: 'Emma', completed: true },
-    { id: '2', name: 'Do dishes', points: 10, emoji: '🍽️', assignedTo: 'Emma', completed: true },
-    { id: '3', name: 'Homework', points: 15, emoji: '📚', assignedTo: 'Liam', completed: false },
-    { id: '4', name: 'Take out trash', points: 5, emoji: '🗑️', assignedTo: 'Liam', completed: false },
-    { id: '5', name: 'Feed pet', points: 10, emoji: '🐶', assignedTo: 'Emma', completed: false },
-  ]);
+const ChoresManagementTab: React.FC<{ onHomePress: () => void; children: ChildType[] }> = ({ onHomePress, children }) => {
+  const { parentId } = useAuth();
+  const [familyChores, setFamilyChores] = useState<FamilyChoreType[]>([]);
+  const [selectedChild, setSelectedChild] = useState<ChildType | null>(null);
+  const [childChores, setChildChores] = useState<ChoreType[]>([]);
   
   // Modal states
   const [showAssignChore, setShowAssignChore] = useState(false);
@@ -932,114 +1222,176 @@ const ChoresManagementTab: React.FC<{ onHomePress: () => void }> = ({ onHomePres
   const [showNewChore, setShowNewChore] = useState(false);
   
   // Form states
-  const [selectedChore, setSelectedChore] = useState<Chore | null>(null);
+  const [selectedFamilyChore, setSelectedFamilyChore] = useState<FamilyChoreType | null>(null);
+  const [selectedChildForAssignment, setSelectedChildForAssignment] = useState<ChildType | null>(null);
+  const [selectedChildForNewChore, setSelectedChildForNewChore] = useState<ChildType | null>(null);
   const [newChoreName, setNewChoreName] = useState('');
   const [newChorePoints, setNewChorePoints] = useState('');
-  const [newChoreEmoji, setNewChoreEmoji] = useState('🧹');
-  const [newChoreAssignedTo, setNewChoreAssignedTo] = useState('Emma');
-  const [aiManaged, setAiManaged] = useState(false);
+  const [newChoreIcon, setNewChoreIcon] = useState('🧹');
 
-  const choreEmojis = ['🧹', '🍽️', '📚', '🗑️', '🐶', '🌱', '🧺', '🚗', '🛏️', '🍳'];
-  const childNames = ['Emma', 'Liam', 'Unassigned'];
+  const choreIcons = ['🧹', '🍽️', '📚', '🗑️', '🐶', '🌱', '🧺', '🚗', '🛏️', '🍳'];
 
-  const handleAssignChore = () => {
-    if (selectedChore && newChoreAssignedTo) {
-      setChores(chores.map(c =>
-        c.id === selectedChore.id
-          ? { ...c, assignedTo: newChoreAssignedTo }
-          : c
-      ));
-      Alert.alert('Success', `${selectedChore.name} has been assigned to ${newChoreAssignedTo}!`);
-      setShowAssignDetails(false);
-      setSelectedChore(null);
-      setNewChoreAssignedTo('Emma');
+  // Load family chores on mount
+  useEffect(() => {
+    if (parentId) {
+      loadFamilyChores();
+    }
+  }, [parentId]);
+
+  // Auto-select child if only one child exists
+  useEffect(() => {
+    if (children.length === 1 && !selectedChild) {
+      setSelectedChild(children[0]);
+    }
+  }, [children, selectedChild]);
+
+  useEffect(() => {
+    if (selectedChild) {
+      loadChildChores(selectedChild.id);
+    }
+  }, [selectedChild]);
+
+  const loadFamilyChores = async () => {
+    try {
+      const loadedChores = await familyChoreService.getFamilyChoresByParent(parentId!);
+      setFamilyChores(loadedChores);
+    } catch (error) {
+      console.error('Error loading family chores:', error);
     }
   };
 
-  const handleEditChore = () => {
-    if (selectedChore && newChoreName && newChorePoints) {
-      setChores(chores.map(c =>
-        c.id === selectedChore.id
-          ? { ...c, name: newChoreName, points: parseInt(newChorePoints), emoji: newChoreEmoji }
-          : c
-      ));
+  const loadChildChores = async (childId: string) => {
+    try {
+      const chores = await choreService.getChoresByChild(childId);
+      setChildChores(chores);
+    } catch (error) {
+      console.error('Error loading child chores:', error);
+    }
+  };
+
+  const handleAssignChore = async () => {
+    if (selectedFamilyChore && selectedChildForAssignment && parentId) {
+      try {
+        // Assign chore to specific child
+        await choreService.assignChore(parentId, selectedChildForAssignment.id, selectedFamilyChore.id);
+        // If the assigned child is currently selected, reload their chores
+        if (selectedChild && selectedChild.id === selectedChildForAssignment.id) {
+          await loadChildChores(selectedChild.id);
+        }
+        Alert.alert('Success', `${selectedFamilyChore.name} has been assigned to ${selectedChildForAssignment.firstName}!`);
+        
+      setShowAssignDetails(false);
+        setSelectedFamilyChore(null);
+        setSelectedChildForAssignment(null);
+      } catch (error) {
+        console.error('Error assigning chore:', error);
+        Alert.alert('Error', 'Failed to assign chore');
+      }
+    }
+  };
+
+  const handleEditChore = async () => {
+    if (selectedFamilyChore && newChoreName && newChorePoints) {
+      try {
+        await familyChoreService.updateFamilyChore(selectedFamilyChore.id, {
+          name: newChoreName,
+          points: parseInt(newChorePoints),
+          icon: newChoreIcon,
+        });
+        await loadFamilyChores();
       Alert.alert('Success', `${newChoreName} has been updated!`);
       setShowEditChore(false);
-      setSelectedChore(null);
+        setSelectedFamilyChore(null);
       setNewChoreName('');
       setNewChorePoints('');
-      setNewChoreEmoji('🧹');
-      setAiManaged(false);
+        setNewChoreIcon('🧹');
+      } catch (error) {
+        console.error('Error updating chore:', error);
+        Alert.alert('Error', 'Failed to update chore');
+      }
     }
   };
 
-  const handleNewChore = () => {
-    if (newChoreName && newChorePoints) {
-      const newChore: Chore = {
-        id: (chores.length + 1).toString(),
+  const handleNewChore = async () => {
+    if (newChoreName && newChorePoints && parentId) {
+      try {
+        // Create family chore
+        const familyChoreId = await familyChoreService.createFamilyChore(parentId, {
         name: newChoreName,
         points: parseInt(newChorePoints),
-        emoji: newChoreEmoji,
-        assignedTo: newChoreAssignedTo,
-        completed: false
-      };
-      setChores([...chores, newChore]);
-      Alert.alert('Success', `${newChoreName} has been added!`);
+          icon: newChoreIcon,
+        });
+        
+        // If a child is selected, also assign the chore to that child
+        if (selectedChildForNewChore) {
+          await choreService.assignChore(parentId, selectedChildForNewChore.id, familyChoreId);
+          // If the assigned child is currently selected, reload their chores
+          if (selectedChild && selectedChild.id === selectedChildForNewChore.id) {
+            await loadChildChores(selectedChild.id);
+          }
+          Alert.alert('Success', `${newChoreName} has been created and assigned to ${selectedChildForNewChore.firstName}!`);
+        } else {
+          Alert.alert('Success', `${newChoreName} has been added to family chores!`);
+        }
+        
+        await loadFamilyChores();
       setShowNewChore(false);
       setNewChoreName('');
       setNewChorePoints('');
-      setNewChoreEmoji('🧹');
-      setNewChoreAssignedTo('Emma');
+        setNewChoreIcon('🧹');
+        setSelectedChildForNewChore(null);
+      } catch (error) {
+        console.error('Error creating chore:', error);
+        Alert.alert('Error', 'Failed to create chore');
+      }
     } else {
       Alert.alert('Error', 'Please fill in all required fields');
     }
   };
 
+  const selectFamilyChoreForAssignment = (chore: FamilyChoreType) => {
+    setSelectedFamilyChore(chore);
+    setShowAssignChore(false);
+    setShowAssignDetails(true);
+  };
+
+  const selectFamilyChoreForEdit = (chore: FamilyChoreType) => {
+    setSelectedFamilyChore(chore);
+    setNewChoreName(chore.name);
+    setNewChorePoints(chore.points.toString());
+    setNewChoreIcon(chore.icon);
+    setShowEditChore(true);
+  };
+
   const openAssignChore = () => {
-    setSelectedChore(null);
-    setNewChoreAssignedTo('Emma');
+    setSelectedFamilyChore(null);
     setShowAssignChore(true);
   };
 
   const openEditChore = () => {
-    setSelectedChore(null); // Start with no chore selected to show the selection list
+    setSelectedFamilyChore(null); // Start with no chore selected to show the selection list
     setNewChoreName('');
     setNewChorePoints('');
-    setNewChoreEmoji('🧹');
-    setAiManaged(false);
+    setNewChoreIcon('🧹');
     setShowEditChore(true);
   };
 
   const openNewChore = () => {
     setNewChoreName('');
     setNewChorePoints('');
-    setNewChoreEmoji('🧹');
-    setNewChoreAssignedTo('Emma');
+    setNewChoreIcon('🧹');
     setShowNewChore(true);
   };
 
-  const selectChoreForAssignment = (chore: Chore) => {
-    setSelectedChore(chore);
-    setNewChoreAssignedTo(chore.assignedTo);
-    setShowAssignChore(false); // Close selection modal
-    setShowAssignDetails(true); // Open assignment details modal
-  };
-
-  const selectChoreForEdit = (chore: Chore) => {
-    setSelectedChore(chore);
-    setNewChoreName(chore.name);
-    setNewChorePoints(chore.points.toString());
-    setNewChoreEmoji(chore.emoji);
-  };
 
   return (
     <ScrollView style={{ flex: 1, padding: 16 }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#2D3748' }}>
-          Manage Chores
-        </Text>
-        <HomeButton onPress={onHomePress} />
-      </View>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+          <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#2D3748' }}>
+        Manage Chores
+      </Text>
+          <HomeButton onPress={onHomePress} />
+        </View>
 
       {/* Three Action Buttons */}
       <View style={{ flexDirection: 'row', gap: 12, marginBottom: 24 }}>
@@ -1083,57 +1435,109 @@ const ChoresManagementTab: React.FC<{ onHomePress: () => void }> = ({ onHomePres
         </TouchableOpacity>
       </View>
 
-      {/* Chore List */}
-      {chores.map((chore) => (
+      {/* Child Selection - Only show if multiple children */}
+      {children.length > 1 && (
+        <View style={{ marginBottom: 24 }}>
+          <Text style={{ fontSize: 18, fontWeight: '600', color: '#2D3748', marginBottom: 12 }}>
+            Select Child:
+          </Text>
+          <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+            {children.map((child) => (
+              <TouchableOpacity
+                key={child.id}
+                onPress={() => setSelectedChild(child)}
+                style={{
+                  paddingHorizontal: 16,
+                  paddingVertical: 8,
+                  borderRadius: 20,
+                  backgroundColor: selectedChild?.id === child.id ? '#63B3ED' : 'rgba(99, 179, 237, 0.1)',
+                  borderWidth: 1,
+                  borderColor: selectedChild?.id === child.id ? '#63B3ED' : 'rgba(99, 179, 237, 0.3)',
+                }}
+              >
+                <Text style={{
+                  color: selectedChild?.id === child.id ? '#FFF' : '#2D3748',
+                  fontWeight: '600',
+                  fontSize: 16
+                }}>
+                  {child.firstName}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      )}
+
+
+      {/* Child Assignments */}
+      {selectedChild && (
+        <View style={{ marginBottom: 24 }}>
+          <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#2D3748', marginBottom: 16 }}>
+            {children.length === 1 ? 'Chores' : `${selectedChild.firstName}'s Chores`}
+          </Text>
+          {childChores.length === 0 ? (
+            <Text style={{ color: '#718096', fontStyle: 'italic', textAlign: 'center', padding: 20 }}>
+              No chores assigned yet
+            </Text>
+          ) : (
+            childChores.map((choreAssignment) => {
+              const familyChore = familyChores.find(c => c.id === choreAssignment.familyChoreId);
+              if (!familyChore) return null;
+              
+              return (
         <View
-          key={chore.id}
+                  key={choreAssignment.id}
           style={[
             childCardStyles.childCard,
-            { opacity: chore.completed ? 0.7 : 1 }
+                    { opacity: choreAssignment.status === 'completed' ? 0.7 : 1 }
           ]}
         >
           <LinearGradient
-            colors={chore.completed 
+                    colors={choreAssignment.status === 'completed'
               ? ['rgba(142, 227, 194, 0.2)', 'rgba(142, 227, 194, 0.1)']
-              : ['rgba(255, 255, 255, 0.95)', 'rgba(255, 255, 255, 0.85)']
+                      : ['rgba(99, 179, 237, 0.1)', 'rgba(99, 179, 237, 0.05)']
             }
             style={childCardStyles.cardGradient}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Text style={{ fontSize: 40, marginRight: 16 }}>{chore.emoji}</Text>
+                      <Text style={{ fontSize: 40, marginRight: 16 }}>{familyChore.icon || '🧹'}</Text>
               <View style={{ flex: 1 }}>
                 <Text style={{ 
                   fontSize: 18, 
                   fontWeight: 'bold', 
                   color: '#2D3748',
-                  textDecorationLine: chore.completed ? 'line-through' : 'none'
+                          textDecorationLine: choreAssignment.status === 'completed' ? 'line-through' : 'none'
                 }}>
-                  {chore.name}
+                          {familyChore.name}
                 </Text>
                 <Text style={{ fontSize: 14, color: '#4A5568', marginTop: 4 }}>
-                  Assigned to: {chore.assignedTo}
+                          Status: {choreAssignment.status}
                 </Text>
                 <Text style={{ fontSize: 12, color: '#63B3ED', marginTop: 2 }}>
-                  {chore.points} points
+                          {familyChore.points} points
                 </Text>
               </View>
               <View style={[
                 childCardStyles.levelBadge,
                 { 
-                  backgroundColor: chore.completed ? '#8EE3C2' : 'rgba(99, 179, 237, 0.2)',
+                          backgroundColor: choreAssignment.status === 'completed' ? '#8EE3C2' : 'rgba(99, 179, 237, 0.2)',
                   width: 36,
                   height: 36,
                   paddingHorizontal: 0
                 }
               ]}>
                 <Text style={{ fontSize: 20 }}>
-                  {chore.completed ? '✓' : '○'}
+                          {choreAssignment.status === 'completed' ? '✓' : '○'}
                 </Text>
               </View>
             </View>
           </LinearGradient>
         </View>
-      ))}
+              );
+            })
+          )}
+        </View>
+      )}
 
       {/* Select Chore Modal (Step 1) */}
       <Modal
@@ -1148,10 +1552,10 @@ const ChoresManagementTab: React.FC<{ onHomePress: () => void }> = ({ onHomePres
             
             <Text style={modalStyles.label}>Choose a chore:</Text>
             <ScrollView style={{ maxHeight: 400, marginBottom: 16 }}>
-              {chores.map((chore) => (
+              {familyChores.map((chore) => (
                 <TouchableOpacity
                   key={chore.id}
-                  onPress={() => selectChoreForAssignment(chore)}
+                  onPress={() => selectFamilyChoreForAssignment(chore)}
                   style={{
                     flexDirection: 'row',
                     alignItems: 'center',
@@ -1163,13 +1567,13 @@ const ChoresManagementTab: React.FC<{ onHomePress: () => void }> = ({ onHomePres
                     borderColor: 'transparent'
                   }}
                 >
-                  <Text style={{ fontSize: 32, marginRight: 16 }}>{chore.emoji}</Text>
+                  <Text style={{ fontSize: 32, marginRight: 16 }}>{chore.icon}</Text>
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontSize: 18, fontWeight: '600', color: '#2D3748' }}>
                       {chore.name}
                     </Text>
                     <Text style={{ fontSize: 14, color: '#4A5568', marginTop: 2 }}>
-                      {chore.points} points • Currently: {chore.assignedTo}
+                      {chore.points} points
                     </Text>
                   </View>
                   <Text style={{ fontSize: 20, color: '#63B3ED' }}>→</Text>
@@ -1200,7 +1604,7 @@ const ChoresManagementTab: React.FC<{ onHomePress: () => void }> = ({ onHomePres
           <View style={modalStyles.modalContainer}>
             <Text style={modalStyles.modalTitle}>Assign Chore</Text>
             
-            {selectedChore && (
+            {selectedFamilyChore && (
               <>
                 {/* Chore Display */}
                 <View style={{
@@ -1211,29 +1615,30 @@ const ChoresManagementTab: React.FC<{ onHomePress: () => void }> = ({ onHomePres
                   borderRadius: 12,
                   marginBottom: 24
                 }}>
-                  <Text style={{ fontSize: 40, marginRight: 16 }}>{selectedChore.emoji}</Text>
+                  <Text style={{ fontSize: 40, marginRight: 16 }}>{selectedFamilyChore.icon || '🧹'}</Text>
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#2D3748' }}>
-                      {selectedChore.name}
+                      {selectedFamilyChore.name}
                     </Text>
                     <Text style={{ fontSize: 16, color: '#63B3ED', marginTop: 4 }}>
-                      {selectedChore.points} points
+                      {selectedFamilyChore.points} points
                     </Text>
                   </View>
                 </View>
 
                 <Text style={modalStyles.label}>Assign To:</Text>
-                <View style={{ flexDirection: 'row', gap: 8, marginBottom: 24 }}>
-                  {childNames.map((name) => (
+                <View style={{ flexDirection: 'row', gap: 8, marginBottom: 24, flexWrap: 'wrap' }}>
+                  {children.map((child) => (
                     <TouchableOpacity
-                      key={name}
-                      onPress={() => setNewChoreAssignedTo(name)}
+                      key={child.id}
+                      onPress={() => setSelectedChildForAssignment(child)}
                       style={{
                         flex: 1,
+                        minWidth: 80,
                         padding: 16,
                         borderRadius: 12,
                         alignItems: 'center',
-                        backgroundColor: newChoreAssignedTo === name 
+                        backgroundColor: selectedChildForAssignment?.id === child.id 
                           ? '#63B3ED' 
                           : 'rgba(99, 179, 237, 0.1)'
                       }}
@@ -1241,9 +1646,9 @@ const ChoresManagementTab: React.FC<{ onHomePress: () => void }> = ({ onHomePres
                       <Text style={{ 
                         fontWeight: '600',
                         fontSize: 16,
-                        color: newChoreAssignedTo === name ? '#FFF' : '#63B3ED'
+                        color: selectedChildForAssignment?.id === child.id ? '#FFF' : '#63B3ED'
                       }}>
-                        {name}
+                        {child.firstName}
                       </Text>
                     </TouchableOpacity>
                   ))}
@@ -1257,8 +1662,13 @@ const ChoresManagementTab: React.FC<{ onHomePress: () => void }> = ({ onHomePres
                     <Text style={modalStyles.cancelButtonText}>Cancel</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    style={[modalStyles.button, modalStyles.saveButton]}
+                    style={[
+                      modalStyles.button, 
+                      modalStyles.saveButton,
+                      !selectedChildForAssignment && { opacity: 0.5 }
+                    ]}
                     onPress={handleAssignChore}
+                    disabled={!selectedChildForAssignment}
                   >
                     <LinearGradient
                       colors={enhancedTheme.gradients.primary}
@@ -1285,14 +1695,14 @@ const ChoresManagementTab: React.FC<{ onHomePress: () => void }> = ({ onHomePres
           <View style={modalStyles.modalContainer}>
             <Text style={modalStyles.modalTitle}>Edit Chore</Text>
             
-            {!selectedChore ? (
+            {!selectedFamilyChore ? (
               <>
                 <Text style={modalStyles.label}>Choose a chore to edit:</Text>
                 <ScrollView style={{ maxHeight: 400, marginBottom: 16 }}>
-                  {chores.map((chore) => (
+                  {familyChores.map((chore) => (
                     <TouchableOpacity
                       key={chore.id}
-                      onPress={() => selectChoreForEdit(chore)}
+                      onPress={() => selectFamilyChoreForEdit(chore)}
                       style={{
                         flexDirection: 'row',
                         alignItems: 'center',
@@ -1302,13 +1712,13 @@ const ChoresManagementTab: React.FC<{ onHomePress: () => void }> = ({ onHomePres
                         marginBottom: 8
                       }}
                     >
-                      <Text style={{ fontSize: 24, marginRight: 12 }}>{chore.emoji}</Text>
+                      <Text style={{ fontSize: 24, marginRight: 12 }}>{chore.icon || '🧹'}</Text>
                       <View style={{ flex: 1 }}>
                         <Text style={{ fontSize: 16, fontWeight: '600', color: '#2D3748' }}>
                           {chore.name}
                         </Text>
                         <Text style={{ fontSize: 14, color: '#4A5568' }}>
-                          {chore.points} points • Assigned to {chore.assignedTo}
+                          {chore.points} points
                         </Text>
                       </View>
                       <Text style={{ fontSize: 20, color: '#63B3ED' }}>→</Text>
@@ -1335,17 +1745,17 @@ const ChoresManagementTab: React.FC<{ onHomePress: () => void }> = ({ onHomePres
                       showsHorizontalScrollIndicator={false}
                       contentContainerStyle={{ paddingVertical: 8 }}
                     >
-                      {choreEmojis.map((emoji) => (
+                      {choreIcons.map((icon) => (
                         <TouchableOpacity
-                          key={emoji}
-                          onPress={() => setNewChoreEmoji(emoji)}
+                          key={icon}
+                          onPress={() => setNewChoreIcon(icon)}
                           style={[
                             modalStyles.avatarOption,
-                            newChoreEmoji === emoji && modalStyles.avatarOptionSelected,
+                            newChoreIcon === icon && modalStyles.avatarOptionSelected,
                             { marginRight: 8 }
                           ]}
                         >
-                          <Text style={modalStyles.avatarText}>{emoji}</Text>
+                          <Text style={modalStyles.avatarText}>{icon}</Text>
                         </TouchableOpacity>
                       ))}
                     </ScrollView>
@@ -1370,34 +1780,6 @@ const ChoresManagementTab: React.FC<{ onHomePress: () => void }> = ({ onHomePres
                     keyboardType="numeric"
                   />
 
-                  <TouchableOpacity
-                    onPress={() => setAiManaged(!aiManaged)}
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      padding: 12,
-                      backgroundColor: 'rgba(99, 179, 237, 0.1)',
-                      borderRadius: 12,
-                      marginBottom: 16
-                    }}
-                  >
-                    <View style={{
-                      width: 24,
-                      height: 24,
-                      borderRadius: 12,
-                      borderWidth: 2,
-                      borderColor: '#63B3ED',
-                      backgroundColor: aiManaged ? '#63B3ED' : 'transparent',
-                      marginRight: 12,
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}>
-                      {aiManaged && <Text style={{ color: '#FFF', fontSize: 16 }}>✓</Text>}
-                    </View>
-                    <Text style={{ flex: 1, color: '#2D3748', fontWeight: '600' }}>
-                      Managed by AI
-                    </Text>
-                  </TouchableOpacity>
                 </ScrollView>
 
                 <View style={modalStyles.buttonRow}>
@@ -1444,17 +1826,17 @@ const ChoresManagementTab: React.FC<{ onHomePress: () => void }> = ({ onHomePres
                   showsHorizontalScrollIndicator={false}
                   contentContainerStyle={{ paddingVertical: 8 }}
                 >
-                  {choreEmojis.map((emoji) => (
+                  {choreIcons.map((icon) => (
                     <TouchableOpacity
-                      key={emoji}
-                      onPress={() => setNewChoreEmoji(emoji)}
+                      key={icon}
+                      onPress={() => setNewChoreIcon(icon)}
                       style={[
                         modalStyles.avatarOption,
-                        newChoreEmoji === emoji && modalStyles.avatarOptionSelected,
+                        newChoreIcon === icon && modalStyles.avatarOptionSelected,
                         { marginRight: 8 }
                       ]}
                     >
-                      <Text style={modalStyles.avatarText}>{emoji}</Text>
+                      <Text style={modalStyles.avatarText}>{icon}</Text>
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
@@ -1479,30 +1861,51 @@ const ChoresManagementTab: React.FC<{ onHomePress: () => void }> = ({ onHomePres
                 keyboardType="numeric"
               />
 
-              <Text style={modalStyles.label}>Assign To</Text>
-              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
-                {childNames.map((name) => (
+              <Text style={modalStyles.label}>Assign To (or select None to just add):</Text>
+              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+                {children.map((child) => (
                   <TouchableOpacity
-                    key={name}
-                    onPress={() => setNewChoreAssignedTo(name)}
+                    key={child.id}
+                    onPress={() => setSelectedChildForNewChore(child)}
                     style={{
                       flex: 1,
+                      minWidth: 80,
                       padding: 12,
                       borderRadius: 12,
                       alignItems: 'center',
-                      backgroundColor: newChoreAssignedTo === name 
+                      backgroundColor: selectedChildForNewChore?.id === child.id 
                         ? '#63B3ED' 
                         : 'rgba(99, 179, 237, 0.1)'
                     }}
                   >
                     <Text style={{ 
                       fontWeight: '600',
-                      color: newChoreAssignedTo === name ? '#FFF' : '#63B3ED'
+                      color: selectedChildForNewChore?.id === child.id ? '#FFF' : '#63B3ED'
                     }}>
-                      {name}
+                      {child.firstName}
                     </Text>
                   </TouchableOpacity>
                 ))}
+                <TouchableOpacity
+                  onPress={() => setSelectedChildForNewChore(null)}
+                  style={{
+                    flex: 1,
+                    minWidth: 80,
+                    padding: 12,
+                    borderRadius: 12,
+                    alignItems: 'center',
+                    backgroundColor: selectedChildForNewChore === null 
+                      ? '#8EE3C2' 
+                      : 'rgba(142, 227, 194, 0.1)'
+                  }}
+                >
+                  <Text style={{ 
+                    fontWeight: '600',
+                    color: selectedChildForNewChore === null ? '#0C1B2A' : '#4A5568'
+                  }}>
+                    None
+                  </Text>
+                </TouchableOpacity>
               </View>
             </ScrollView>
 
@@ -1514,14 +1917,21 @@ const ChoresManagementTab: React.FC<{ onHomePress: () => void }> = ({ onHomePres
                 <Text style={modalStyles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[modalStyles.button, modalStyles.saveButton]}
+                style={[
+                  modalStyles.button, 
+                  modalStyles.saveButton,
+                  selectedChildForNewChore === undefined && { opacity: 0.5 }
+                ]}
                 onPress={handleNewChore}
+                disabled={selectedChildForNewChore === undefined}
               >
                 <LinearGradient
                   colors={enhancedTheme.gradients.primary}
                   style={modalStyles.saveButtonGradient}
                 >
-                  <Text style={modalStyles.saveButtonText}>Save</Text>
+                  <Text style={modalStyles.saveButtonText}>
+                    {selectedChildForNewChore ? 'Create & Assign' : 'Create'}
+                  </Text>
                 </LinearGradient>
               </TouchableOpacity>
             </View>
@@ -1673,8 +2083,8 @@ const HelpTab: React.FC<{ onHomePress: () => void }> = ({ onHomePress }) => {
 const ReportsTab: React.FC<{ onHomePress: () => void }> = ({ onHomePress }) => {
   // Mock data for reports
   const children = [
-    { id: '1', name: 'Emma', age: 8, points: 450, level: 3, avatar: '👧', completionRate: 85 },
-    { id: '2', name: 'Liam', age: 6, points: 280, level: 2, avatar: '👦', completionRate: 72 }
+    { id: '1', firstName: 'Emma', age: 8, points: 450, level: 3, avatar: '👧', completionRate: 85 },
+    { id: '2', firstName: 'Liam', age: 6, points: 280, level: 2, avatar: '👦', completionRate: 72 }
   ];
 
   const chores = [
@@ -1742,7 +2152,7 @@ const ReportsTab: React.FC<{ onHomePress: () => void }> = ({ onHomePress }) => {
                 <View style={reportsStyles.childHeader}>
                   <Text style={reportsStyles.childAvatar}>{child.avatar}</Text>
                   <View style={reportsStyles.childInfo}>
-                    <Text style={reportsStyles.childName}>{child.name}</Text>
+                    <Text style={reportsStyles.childName}>{child.firstName}</Text>
                     <Text style={reportsStyles.childAge}>Age {child.age} • Level {child.level}</Text>
                   </View>
                   <View style={reportsStyles.pointsBadge}>
@@ -1831,7 +2241,7 @@ const ReportsTab: React.FC<{ onHomePress: () => void }> = ({ onHomePress }) => {
 // Inline ChildrenManagementTab component
 interface Child {
   id: string;
-  name: string;
+  firstName: string;
   age: number;
   points: number;
   level: number;
@@ -1841,14 +2251,13 @@ interface Child {
   screenTimeEndTime: string; // e.g., "20:00"
 }
 
-const ChildrenManagementTab: React.FC<{ onHomePress: () => void }> = ({ onHomePress }) => {
-  const [children, setChildren] = useState<Child[]>([
-    { id: '1', name: 'Emma', age: 8, points: 450, level: 3, avatar: '👧', dailyScreenTimeLimit: 60, screenTimeStartTime: '07:00', screenTimeEndTime: '20:00' },
-    { id: '2', name: 'Liam', age: 6, points: 280, level: 2, avatar: '👦', dailyScreenTimeLimit: 45, screenTimeStartTime: '08:00', screenTimeEndTime: '19:00' }
-  ]);
+const ChildrenManagementTab: React.FC<{ onHomePress: () => void; children: ChildType[]; onChildrenChange: () => void }> = ({ onHomePress, children, onChildrenChange }) => {
+  const { parentId } = useAuth();
   const [editingChild, setEditingChild] = useState<Child | null>(null);
   const [showAddChild, setShowAddChild] = useState(false);
   const [selectedChildChores, setSelectedChildChores] = useState<Child | null>(null);
+  const [childChores, setChildChores] = useState<ChoreType[]>([]);
+  const [familyChores, setFamilyChores] = useState<FamilyChoreType[]>([]);
   
   // Form state
   const [editName, setEditName] = useState('');
@@ -1869,10 +2278,41 @@ const ChildrenManagementTab: React.FC<{ onHomePress: () => void }> = ({ onHomePr
   const [timePickerType, setTimePickerType] = useState<'start' | 'end' | 'newStart' | 'newEnd'>('start');
   const [selectedHour, setSelectedHour] = useState(7);
   const [selectedMinute, setSelectedMinute] = useState(0);
+  const [selectedAmPm, setSelectedAmPm] = useState<'AM' | 'PM'>('AM');
+
+  // Children are loaded by parent component
+
+  // Load family chores on mount
+  useEffect(() => {
+    if (parentId) {
+      loadFamilyChores();
+    }
+  }, [parentId]);
+
+  const loadFamilyChores = async () => {
+    try {
+      const loadedChores = await familyChoreService.getFamilyChoresByParent(parentId!);
+      setFamilyChores(loadedChores);
+    } catch (error) {
+      console.error('Error loading family chores:', error);
+    }
+  };
+
+  const loadChildChores = async (childId: string) => {
+    try {
+      const chores = await choreService.getChoresByChild(childId);
+      // Filter chores for today or later
+      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+      const todayChores = chores.filter(chore => chore.dateAssigned >= today);
+      setChildChores(todayChores);
+    } catch (error) {
+      console.error('Error loading child chores:', error);
+    }
+  };
 
   const handleEditProfile = (child: Child) => {
     setEditingChild(child);
-    setEditName(child.name);
+    setEditName(child.firstName);
     setEditAge(child.age.toString());
     setEditAvatar(child.avatar);
     setEditDailyScreenTime(child.dailyScreenTimeLimit.toString());
@@ -1880,28 +2320,32 @@ const ChildrenManagementTab: React.FC<{ onHomePress: () => void }> = ({ onHomePr
     setEditScreenTimeEnd(child.screenTimeEndTime);
   };
 
-  const handleSaveProfile = () => {
-    if (editingChild) {
-      setChildren(children.map(c => 
-        c.id === editingChild.id 
-          ? { 
-              ...c, 
-              name: editName, 
-              age: parseInt(editAge) || c.age, 
-              avatar: editAvatar,
-              dailyScreenTimeLimit: parseInt(editDailyScreenTime) || c.dailyScreenTimeLimit,
-              screenTimeStartTime: editScreenTimeStart || c.screenTimeStartTime,
-              screenTimeEndTime: editScreenTimeEnd || c.screenTimeEndTime
-            }
-          : c
-      ));
-      Alert.alert('Success', `${editName}'s profile has been updated!`);
+  const handleSaveProfile = async () => {
+    if (editingChild && parentId) {
+      try {
+        await childService.updateChild(editingChild.id, {
+          firstName: editName,
+          age: parseInt(editAge),
+          avatar: editAvatar,
+          dailyScreenTimeLimit: parseInt(editDailyScreenTime),
+          screenTimeStartTime: editScreenTimeStart,
+          screenTimeEndTime: editScreenTimeEnd,
+        });
+        
+        // Reload children
+        onChildrenChange();
+        Alert.alert("Success", `${editName}'s profile has been updated!`);
       setEditingChild(null);
+      } catch (error) {
+        console.error("Error updating child:", error);
+        Alert.alert("Error", "Failed to update child profile");
+      }
     }
   };
 
-  const handleViewChores = (child: Child) => {
+  const handleViewChores = async (child: Child) => {
     setSelectedChildChores(child);
+    await loadChildChores(child.id);
   };
 
   const handleAddNewChild = () => {
@@ -1912,28 +2356,52 @@ const ChildrenManagementTab: React.FC<{ onHomePress: () => void }> = ({ onHomePr
   };
 
 
-  const handleSaveNewChild = () => {
-    if (newChildName && newChildAge) {
-      const newChild: Child = {
-        id: (children.length + 1).toString(),
-        name: newChildName,
+  const handleSaveNewChild = async () => {
+    if (newChildName && newChildAge && parentId) {
+      try {
+        await childService.createChild(parentId, {
+          firstName: newChildName,
         age: parseInt(newChildAge),
         points: 0,
         level: 1,
-        avatar: newChildAvatar,
-        dailyScreenTimeLimit: parseInt(newChildDailyScreenTime) || 60,
-        screenTimeStartTime: newChildScreenTimeStart || '07:00',
-        screenTimeEndTime: newChildScreenTimeEnd || '20:00'
-      };
-      setChildren([...children, newChild]);
-      Alert.alert('Success', `${newChildName} has been added!`);
+          avatar: newChildAvatar,
+          dailyScreenTimeLimit: parseInt(newChildDailyScreenTime) || 60,
+          screenTimeStartTime: newChildScreenTimeStart || "07:00",
+          screenTimeEndTime: newChildScreenTimeEnd || "20:00",
+        });
+        
+        // Reload children
+        onChildrenChange();
+        Alert.alert("Success", `${newChildName} has been added!`);
       setShowAddChild(false);
+      } catch (error) {
+        console.error("Error creating child:", error);
+        Alert.alert("Error", "Failed to add child");
+      }
     } else {
-      Alert.alert('Error', 'Please fill in all required fields');
+      Alert.alert("Error", "Please fill in all required fields");
     }
   };
 
   // Time picker functions
+  // Time conversion functions
+  const convert24To12 = (time24: string): { hour: number; minute: number; amPm: 'AM' | 'PM' } => {
+    const [hour, minute] = time24.split(':').map(Number);
+    const hour12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+    const amPm: 'AM' | 'PM' = hour < 12 ? 'AM' : 'PM';
+    return { hour: hour12, minute, amPm };
+  };
+
+  const convert12To24 = (hour12: number, minute: number, amPm: 'AM' | 'PM') => {
+    let hour24 = hour12;
+    if (amPm === 'AM' && hour12 === 12) {
+      hour24 = 0;
+    } else if (amPm === 'PM' && hour12 !== 12) {
+      hour24 = hour12 + 12;
+    }
+    return `${hour24.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+  };
+
   const openTimePicker = (type: 'start' | 'end' | 'newStart' | 'newEnd') => {
     setTimePickerType(type);
     setShowTimePicker(true);
@@ -1955,13 +2423,14 @@ const ChildrenManagementTab: React.FC<{ onHomePress: () => void }> = ({ onHomePr
         break;
     }
     
-    const [hour, minute] = currentTime.split(':').map(Number);
+    const { hour, minute, amPm } = convert24To12(currentTime);
     setSelectedHour(hour);
     setSelectedMinute(minute);
+    setSelectedAmPm(amPm);
   };
 
   const confirmTimeSelection = () => {
-    const timeString = `${selectedHour.toString().padStart(2, '0')}:${selectedMinute.toString().padStart(2, '0')}`;
+    const timeString = convert12To24(selectedHour, selectedMinute, selectedAmPm);
     
     switch (timePickerType) {
       case 'start':
@@ -1988,14 +2457,14 @@ const ChildrenManagementTab: React.FC<{ onHomePress: () => void }> = ({ onHomePr
       <View style={{ padding: 16, paddingBottom: 8 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#2D3748' }}>
-            Manage Children
-          </Text>
+        Manage Children
+      </Text>
           <HomeButton onPress={onHomePress} />
         </View>
       </View>
 
       <ScrollView style={{ flex: 1, paddingHorizontal: 16 }} showsVerticalScrollIndicator={false}>
-        {children.map((child) => (
+      {children.map((child) => (
         <View key={child.id} style={childCardStyles.childCard}>
           <LinearGradient
             colors={['rgba(255, 255, 255, 0.95)', 'rgba(255, 255, 255, 0.85)']}
@@ -2004,7 +2473,7 @@ const ChildrenManagementTab: React.FC<{ onHomePress: () => void }> = ({ onHomePr
             <View style={childCardStyles.childHeader}>
               <Text style={childCardStyles.avatar}>{child.avatar}</Text>
               <View style={childCardStyles.childInfo}>
-                <Text style={childCardStyles.childName}>{child.name}</Text>
+                <Text style={childCardStyles.childName}>{child.firstName}</Text>
                 <Text style={childCardStyles.childAge}>Age {child.age}</Text>
               </View>
               <View style={childCardStyles.levelBadge}>
@@ -2040,23 +2509,23 @@ const ChildrenManagementTab: React.FC<{ onHomePress: () => void }> = ({ onHomePr
             </View>
           </LinearGradient>
         </View>
-        ))}
+      ))}
       </ScrollView>
 
       {/* Sticky Add New Child Button */}
       <View style={{ padding: 16, paddingTop: 8 }}>
-        <TouchableOpacity 
-          style={childCardStyles.addButton}
-          onPress={handleAddNewChild}
+      <TouchableOpacity 
+        style={childCardStyles.addButton}
+        onPress={handleAddNewChild}
+      >
+        <LinearGradient
+          colors={enhancedTheme.gradients.primary}
+          style={childCardStyles.addButtonGradient}
         >
-          <LinearGradient
-            colors={enhancedTheme.gradients.primary}
-            style={childCardStyles.addButtonGradient}
-          >
-            <Text style={childCardStyles.addButtonIcon}>+</Text>
-            <Text style={childCardStyles.addButtonText}>Add New Child</Text>
-          </LinearGradient>
-        </TouchableOpacity>
+          <Text style={childCardStyles.addButtonIcon}>+</Text>
+          <Text style={childCardStyles.addButtonText}>Add New Child</Text>
+        </LinearGradient>
+      </TouchableOpacity>
       </View>
 
       {/* Edit Profile Modal */}
@@ -2069,9 +2538,9 @@ const ChildrenManagementTab: React.FC<{ onHomePress: () => void }> = ({ onHomePr
         <View style={modalStyles.overlay}>
           <View style={modalStyles.modalContainer}>
             <ScrollView showsVerticalScrollIndicator={false}>
-              <Text style={modalStyles.modalTitle}>Edit Profile</Text>
-              
-              <Text style={modalStyles.label}>Avatar</Text>
+            <Text style={modalStyles.modalTitle}>Edit Profile</Text>
+            
+            <Text style={modalStyles.label}>Avatar</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={modalStyles.avatarScroll}>
               {avatarOptions.map((emoji) => (
                 <TouchableOpacity
@@ -2089,25 +2558,25 @@ const ChildrenManagementTab: React.FC<{ onHomePress: () => void }> = ({ onHomePr
 
             <View style={modalStyles.rowContainer}>
               <View style={modalStyles.halfWidth}>
-                <Text style={modalStyles.label}>Name</Text>
-                <TextInput
-                  style={modalStyles.input}
-                  value={editName}
-                  onChangeText={setEditName}
-                  placeholder="Enter name"
-                  placeholderTextColor="#999"
-                />
+            <Text style={modalStyles.label}>Name</Text>
+            <TextInput
+              style={modalStyles.input}
+              value={editName}
+              onChangeText={setEditName}
+              placeholder="Enter name"
+              placeholderTextColor="#999"
+            />
               </View>
               <View style={modalStyles.halfWidth}>
-                <Text style={modalStyles.label}>Age</Text>
-                <TextInput
-                  style={modalStyles.input}
-                  value={editAge}
-                  onChangeText={setEditAge}
-                  placeholder="Enter age"
-                  placeholderTextColor="#999"
-                  keyboardType="numeric"
-                />
+            <Text style={modalStyles.label}>Age</Text>
+            <TextInput
+              style={modalStyles.input}
+              value={editAge}
+              onChangeText={setEditAge}
+              placeholder="Enter age"
+              placeholderTextColor="#999"
+              keyboardType="numeric"
+            />
               </View>
             </View>
 
@@ -2190,52 +2659,45 @@ const ChildrenManagementTab: React.FC<{ onHomePress: () => void }> = ({ onHomePr
       >
         <View style={modalStyles.overlay}>
           <View style={modalStyles.modalContainer}>
-            <Text style={modalStyles.modalTitle}>{selectedChildChores?.name}'s Chores</Text>
+            <Text style={modalStyles.modalTitle}>{selectedChildChores?.firstName}'s Chores</Text>
             
             <View style={modalStyles.choreList}>
-              <View style={modalStyles.choreItem}>
-                <Text style={modalStyles.choreEmoji}>🧹</Text>
+              {childChores.length === 0 ? (
+                <Text style={{ 
+                  textAlign: 'center', 
+                  color: '#718096', 
+                  fontStyle: 'italic', 
+                  padding: 20,
+                  fontSize: 16
+                }}>
+                  No chores assigned for today
+                </Text>
+              ) : (
+                childChores.map((choreAssignment) => {
+                  const familyChore = familyChores.find(fc => fc.id === choreAssignment.familyChoreId);
+                  if (!familyChore) return null;
+                  
+                  const isCompleted = choreAssignment.status === 'completed';
+                  
+                  return (
+                    <View key={choreAssignment.id} style={modalStyles.choreItem}>
+                      <Text style={modalStyles.choreEmoji}>{familyChore.icon || '🧹'}</Text>
                 <View style={modalStyles.choreInfo}>
-                  <Text style={modalStyles.choreName}>Clean room</Text>
-                  <Text style={modalStyles.chorePoints}>5 points</Text>
+                        <Text style={modalStyles.choreName}>{familyChore.name}</Text>
+                        <Text style={modalStyles.chorePoints}>{familyChore.points} points</Text>
                 </View>
-                <View style={modalStyles.choreStatus}>
-                  <Text style={modalStyles.choreStatusText}>✓</Text>
+                      <View style={[
+                        modalStyles.choreStatus,
+                        isCompleted ? {} : modalStyles.choreStatusPending
+                      ]}>
+                        <Text style={isCompleted ? modalStyles.choreStatusText : modalStyles.choreStatusTextPending}>
+                          {isCompleted ? '✓' : '○'}
+                        </Text>
                 </View>
               </View>
-
-              <View style={modalStyles.choreItem}>
-                <Text style={modalStyles.choreEmoji}>🍽️</Text>
-                <View style={modalStyles.choreInfo}>
-                  <Text style={modalStyles.choreName}>Do dishes</Text>
-                  <Text style={modalStyles.chorePoints}>10 points</Text>
-                </View>
-                <View style={modalStyles.choreStatus}>
-                  <Text style={modalStyles.choreStatusText}>✓</Text>
-                </View>
-              </View>
-
-              <View style={modalStyles.choreItem}>
-                <Text style={modalStyles.choreEmoji}>📚</Text>
-                <View style={modalStyles.choreInfo}>
-                  <Text style={modalStyles.choreName}>Homework</Text>
-                  <Text style={modalStyles.chorePoints}>15 points</Text>
-                </View>
-                <View style={[modalStyles.choreStatus, modalStyles.choreStatusPending]}>
-                  <Text style={modalStyles.choreStatusTextPending}>○</Text>
-                </View>
-              </View>
-
-              <View style={modalStyles.choreItem}>
-                <Text style={modalStyles.choreEmoji}>🗑️</Text>
-                <View style={modalStyles.choreInfo}>
-                  <Text style={modalStyles.choreName}>Take out trash</Text>
-                  <Text style={modalStyles.chorePoints}>5 points</Text>
-                </View>
-                <View style={[modalStyles.choreStatus, modalStyles.choreStatusPending]}>
-                  <Text style={modalStyles.choreStatusTextPending}>○</Text>
-                </View>
-              </View>
+                  );
+                })
+              )}
             </View>
 
             <View style={modalStyles.buttonRow}>
@@ -2265,9 +2727,9 @@ const ChildrenManagementTab: React.FC<{ onHomePress: () => void }> = ({ onHomePr
         <View style={modalStyles.overlay}>
           <View style={modalStyles.modalContainer}>
             <ScrollView showsVerticalScrollIndicator={false}>
-              <Text style={modalStyles.modalTitle}>Add New Child</Text>
-              
-              <Text style={modalStyles.label}>Avatar</Text>
+            <Text style={modalStyles.modalTitle}>Add New Child</Text>
+            
+            <Text style={modalStyles.label}>Avatar</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={modalStyles.avatarScroll}>
               {avatarOptions.map((emoji) => (
                 <TouchableOpacity
@@ -2285,25 +2747,25 @@ const ChildrenManagementTab: React.FC<{ onHomePress: () => void }> = ({ onHomePr
 
             <View style={modalStyles.rowContainer}>
               <View style={modalStyles.halfWidth}>
-                <Text style={modalStyles.label}>Name</Text>
-                <TextInput
-                  style={modalStyles.input}
-                  value={newChildName}
-                  onChangeText={setNewChildName}
-                  placeholder="Enter name"
-                  placeholderTextColor="#999"
-                />
+            <Text style={modalStyles.label}>Name</Text>
+            <TextInput
+              style={modalStyles.input}
+              value={newChildName}
+              onChangeText={setNewChildName}
+              placeholder="Enter name"
+              placeholderTextColor="#999"
+            />
               </View>
               <View style={modalStyles.halfWidth}>
-                <Text style={modalStyles.label}>Age</Text>
-                <TextInput
-                  style={modalStyles.input}
-                  value={newChildAge}
-                  onChangeText={setNewChildAge}
-                  placeholder="Enter age"
-                  placeholderTextColor="#999"
-                  keyboardType="numeric"
-                />
+            <Text style={modalStyles.label}>Age</Text>
+            <TextInput
+              style={modalStyles.input}
+              value={newChildAge}
+              onChangeText={setNewChildAge}
+              placeholder="Enter age"
+              placeholderTextColor="#999"
+              keyboardType="numeric"
+            />
               </View>
             </View>
 
@@ -2392,24 +2854,27 @@ const ChildrenManagementTab: React.FC<{ onHomePress: () => void }> = ({ onHomePr
               <View style={modalStyles.timePickerColumn}>
                 <Text style={modalStyles.timePickerLabel}>Hour</Text>
                 <ScrollView style={modalStyles.timePickerScroll} showsVerticalScrollIndicator={false}>
-                  {Array.from({ length: 24 }, (_, i) => (
-                    <TouchableOpacity
-                      key={i}
-                      style={[
-                        modalStyles.timePickerOption,
-                        selectedHour === i && modalStyles.timePickerOptionSelected
-                      ]}
-                      onPress={() => setSelectedHour(i)}
-                    >
-                      <Text style={[
-                        modalStyles.timePickerText,
-                        selectedHour === i && modalStyles.timePickerTextSelected
-                      ]}>
-                        {i.toString().padStart(2, '0')}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
+                  {Array.from({ length: 12 }, (_, i) => {
+                    const hour = i + 1;
+                    return (
+                      <TouchableOpacity
+                        key={hour}
+                        style={[
+                          modalStyles.timePickerOption,
+                          selectedHour === hour && modalStyles.timePickerOptionSelected
+                        ]}
+                        onPress={() => setSelectedHour(hour)}
+                      >
+                        <Text style={[
+                          modalStyles.timePickerText,
+                          selectedHour === hour && modalStyles.timePickerTextSelected
+                        ]}>
+                          {hour.toString().padStart(2, '0')}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+    </ScrollView>
               </View>
               
               <View style={modalStyles.timePickerColumn}>
@@ -2429,6 +2894,29 @@ const ChildrenManagementTab: React.FC<{ onHomePress: () => void }> = ({ onHomePr
                         selectedMinute === i && modalStyles.timePickerTextSelected
                       ]}>
                         {i.toString().padStart(2, '0')}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+
+              <View style={modalStyles.timePickerColumn}>
+                <Text style={modalStyles.timePickerLabel}>AM/PM</Text>
+                <ScrollView style={modalStyles.timePickerScroll} showsVerticalScrollIndicator={false}>
+                  {['AM', 'PM'].map((period) => (
+                    <TouchableOpacity
+                      key={period}
+                      style={[
+                        modalStyles.timePickerOption,
+                        selectedAmPm === period && modalStyles.timePickerOptionSelected
+                      ]}
+                      onPress={() => setSelectedAmPm(period as 'AM' | 'PM')}
+                    >
+                      <Text style={[
+                        modalStyles.timePickerText,
+                        selectedAmPm === period && modalStyles.timePickerTextSelected
+                      ]}>
+                        {period}
                       </Text>
                     </TouchableOpacity>
                   ))}
@@ -2633,6 +3121,30 @@ const modalStyles = StyleSheet.create({
     fontSize: 16,
     color: '#718096',
     fontWeight: 'bold',
+  },
+  countryList: {
+    maxHeight: 300
+  },
+  countryOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0'
+  },
+  countryOptionSelected: {
+    backgroundColor: 'rgba(99, 179, 237, 0.1)'
+  },
+  countryName: {
+    flex: 1,
+    fontSize: 16,
+    color: '#2D3748'
+  },
+  countryCodeText: {
+    fontSize: 14,
+    color: '#718096',
+    fontWeight: '600'
   },
   label: {
     fontSize: 14,
@@ -2966,6 +3478,13 @@ const settingsStyles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600'
   },
+  saveButton: {
+    backgroundColor: '#48BB78',
+    marginTop: 10
+  },
+  saveButtonText: {
+    color: '#FFF'
+  },
   logoutButton: {
     backgroundColor: '#E53E3E'
   },
@@ -3028,6 +3547,39 @@ const settingsStyles = StyleSheet.create({
     fontSize: 16,
     color: '#38A169',
     fontWeight: '500'
+  },
+  phoneInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8
+  },
+  countryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    backgroundColor: '#F7FAFC',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    minWidth: 80
+  },
+  countryFlag: {
+    fontSize: 16,
+    marginRight: 4
+  },
+  countryCode: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2D3748',
+    marginRight: 4
+  },
+  countryArrow: {
+    fontSize: 10,
+    color: '#718096'
+  },
+  phoneInput: {
+    flex: 1
   }
 });
 
@@ -3564,6 +4116,7 @@ const OnboardingFlow: React.FC<{
   const [timePickerType, setTimePickerType] = useState<'start' | 'end'>('start');
   const [selectedHour, setSelectedHour] = useState(7);
   const [selectedMinute, setSelectedMinute] = useState(0);
+  const [selectedAmPm, setSelectedAmPm] = useState<'AM' | 'PM'>('AM');
   const scrollViewRef = useRef<ScrollView>(null);
 
   // Scroll to top when step changes
@@ -3571,18 +4124,42 @@ const OnboardingFlow: React.FC<{
     scrollViewRef.current?.scrollTo({ y: 0, animated: true });
   }, [step]);
 
+  // Time conversion functions
+  const convert24To12 = (time24: string): { hour: number; minute: number; amPm: 'AM' | 'PM' } => {
+    const [hour, minute] = time24.split(':').map(Number);
+    const hour12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+    const amPm: 'AM' | 'PM' = hour < 12 ? 'AM' : 'PM';
+    return { hour: hour12, minute, amPm };
+  };
+
+  const convert12To24 = (hour12: number, minute: number, amPm: 'AM' | 'PM') => {
+    let hour24 = hour12;
+    if (amPm === 'AM' && hour12 === 12) {
+      hour24 = 0;
+    } else if (amPm === 'PM' && hour12 !== 12) {
+      hour24 = hour12 + 12;
+    }
+    return `${hour24.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+  };
+
+  const formatTimeForDisplay = (time24: string) => {
+    const { hour, minute, amPm } = convert24To12(time24);
+    return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')} ${amPm}`;
+  };
+
   const openTimePicker = (type: 'start' | 'end') => {
     setTimePickerType(type);
     setShowTimePicker(true);
     
     const currentTime = type === 'start' ? quietStart : quietEnd;
-    const [hour, minute] = currentTime.split(':').map(Number);
+    const { hour, minute, amPm } = convert24To12(currentTime);
     setSelectedHour(hour);
     setSelectedMinute(minute);
+    setSelectedAmPm(amPm);
   };
 
   const confirmTimeSelection = () => {
-    const timeString = `${selectedHour.toString().padStart(2, '0')}:${selectedMinute.toString().padStart(2, '0')}`;
+    const timeString = convert12To24(selectedHour, selectedMinute, selectedAmPm);
     
     if (timePickerType === 'start') {
       setQuietStart(timeString);
@@ -4015,23 +4592,26 @@ const OnboardingFlow: React.FC<{
               <View style={modalStyles.timePickerColumn}>
                 <Text style={modalStyles.timePickerLabel}>Hour</Text>
                 <ScrollView style={modalStyles.timePickerScroll} showsVerticalScrollIndicator={false}>
-                  {Array.from({ length: 24 }, (_, i) => (
-                    <TouchableOpacity
-                      key={i}
-                      style={[
-                        modalStyles.timePickerOption,
-                        selectedHour === i && modalStyles.timePickerOptionSelected
-                      ]}
-                      onPress={() => setSelectedHour(i)}
-                    >
-                      <Text style={[
-                        modalStyles.timePickerText,
-                        selectedHour === i && modalStyles.timePickerTextSelected
-                      ]}>
-                        {i.toString().padStart(2, '0')}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
+                  {Array.from({ length: 12 }, (_, i) => {
+                    const hour = i + 1;
+                    return (
+                      <TouchableOpacity
+                        key={hour}
+                        style={[
+                          modalStyles.timePickerOption,
+                          selectedHour === hour && modalStyles.timePickerOptionSelected
+                        ]}
+                        onPress={() => setSelectedHour(hour)}
+                      >
+                        <Text style={[
+                          modalStyles.timePickerText,
+                          selectedHour === hour && modalStyles.timePickerTextSelected
+                        ]}>
+                          {hour.toString().padStart(2, '0')}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
                 </ScrollView>
               </View>
               
@@ -4052,6 +4632,29 @@ const OnboardingFlow: React.FC<{
                         selectedMinute === i && modalStyles.timePickerTextSelected
                       ]}>
                         {i.toString().padStart(2, '0')}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+
+              <View style={modalStyles.timePickerColumn}>
+                <Text style={modalStyles.timePickerLabel}>AM/PM</Text>
+                <ScrollView style={modalStyles.timePickerScroll} showsVerticalScrollIndicator={false}>
+                  {['AM', 'PM'].map((period) => (
+                    <TouchableOpacity
+                      key={period}
+                      style={[
+                        modalStyles.timePickerOption,
+                        selectedAmPm === period && modalStyles.timePickerOptionSelected
+                      ]}
+                      onPress={() => setSelectedAmPm(period as 'AM' | 'PM')}
+                    >
+                      <Text style={[
+                        modalStyles.timePickerText,
+                        selectedAmPm === period && modalStyles.timePickerTextSelected
+                      ]}>
+                        {period}
                       </Text>
                     </TouchableOpacity>
                   ))}
@@ -4090,14 +4693,15 @@ export const ParentDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState('Home');
   const [showOnboarding, setShowOnboarding] = useState(true); // Set to true to test onboarding
   const [onboardingStep, setOnboardingStep] = useState(0);
+  const [children, setChildren] = useState<ChildType[]>([]);
   
   // Onboarding form state
   const [onboardingParentName, setOnboardingParentName] = useState('');
   const [onboardingParentPhone, setOnboardingParentPhone] = useState('');
   const [onboardingParentAvatar, setOnboardingParentAvatar] = useState('👩');
   const [onboardingDefaultLimit, setOnboardingDefaultLimit] = useState('120');
-  const [onboardingQuietStart, setOnboardingQuietStart] = useState('07:00');
-  const [onboardingQuietEnd, setOnboardingQuietEnd] = useState('21:00');
+  const [onboardingQuietStart, setOnboardingQuietStart] = useState('21:00');
+  const [onboardingQuietEnd, setOnboardingQuietEnd] = useState('07:00');
   const [onboardingMaxRequests, setOnboardingMaxRequests] = useState('3');
   const [onboardingChildName, setOnboardingChildName] = useState('');
   const [onboardingChildAge, setOnboardingChildAge] = useState('');
@@ -4105,6 +4709,42 @@ export const ParentDashboard: React.FC = () => {
   const [onboardingChildLimit, setOnboardingChildLimit] = useState('60');
   const [onboardingChildStart, setOnboardingChildStart] = useState('07:00');
   const [onboardingChildEnd, setOnboardingChildEnd] = useState('20:00');
+  
+  // Get auth context
+  const { parentId, phoneNumber, setParentId } = useAuth();
+  
+  // Load parent data and children on mount
+  useEffect(() => {
+    if (parentId && !showOnboarding) {
+      loadParentData();
+      loadChildren();
+    }
+  }, [parentId, showOnboarding]);
+  
+  const loadParentData = async () => {
+    if (!parentId) return;
+    
+    try {
+      const parent = await parentService.getParent(parentId);
+      if (parent) {
+        console.log('Parent data loaded:', parent.name);
+      }
+    } catch (error) {
+      console.error('Error loading parent data:', error);
+    }
+  };
+
+  const loadChildren = async () => {
+    if (!parentId) return;
+    
+    try {
+      const loadedChildren = await childService.getChildrenByParent(parentId);
+      setChildren(loadedChildren);
+      console.log('Children loaded:', loadedChildren.length);
+    } catch (error) {
+      console.error('Error loading children:', error);
+    }
+  };
 
   const handleVoicePress = () => {
     setIsListening(!isListening);
@@ -4116,28 +4756,88 @@ export const ParentDashboard: React.FC = () => {
     setActiveTab('Home'); // Navigate to home screen with voice command button
   };
 
+  // Helper functions
+  const generateUniqueId = () => {
+    return 'parent_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+  };
+
+  const normalizePhone = (phone: string) => {
+    // Remove all non-numeric characters and ensure starts with +
+    const cleaned = phone.replace(/\D/g, '');
+    return `+1${cleaned}`;
+  };
+
   // Onboarding navigation
-  const nextOnboardingStep = () => {
+  const nextOnboardingStep = async () => {
     if (onboardingStep < 5) {
       setOnboardingStep(onboardingStep + 1);
     } else {
       // Complete onboarding
-      completeOnboarding();
+      await completeOnboarding();
     }
   };
 
-  const completeOnboarding = () => {
-    // TODO: Save onboarding data to persistent storage or context
-    // For now, just close onboarding and go to home
-    console.log('Onboarding completed with data:', {
-      parentName: onboardingParentName,
-      parentPhone: onboardingParentPhone,
-      childName: onboardingChildName,
-      childAge: onboardingChildAge
-    });
-    
-    setShowOnboarding(false);
-    setActiveTab('Home');
+  const completeOnboarding = async () => {
+    try {
+      console.log('Starting onboarding completion...');
+      // Generate parent ID
+      const newParentId = parentId || generateUniqueId();
+      const normalizedPhone = normalizePhone(onboardingParentPhone);
+      
+      console.log('Saving parent:', onboardingParentName, normalizedPhone);
+      // Save parent to Firestore
+      await parentService.saveParent(newParentId, {
+        name: onboardingParentName,
+        phone: normalizedPhone,
+        avatar: onboardingParentAvatar,
+        settings: {
+          defaultDailyLimit: parseInt(onboardingDefaultLimit),
+          quietHoursStart: onboardingQuietStart,
+          quietHoursEnd: onboardingQuietEnd,
+          maxRequests: parseInt(onboardingMaxRequests),
+        },
+      });
+      
+      // Save auth state
+      await setParentId(newParentId, normalizedPhone);
+      
+      // Create default family chores for new parent
+      console.log('Creating default family chores...');
+      await familyChoreService.createDefaultFamilyChores(newParentId);
+      console.log('Default family chores created successfully');
+      
+      // Create first child (use provided values or defaults)
+      console.log('Child data:', onboardingChildName, onboardingChildAge, onboardingChildAvatar);
+      const childNameValue = onboardingChildName || 'My Child';
+      const childAgeValue = onboardingChildAge || '8';
+      const childAvatarValue = onboardingChildAvatar || '👦';
+      
+      console.log('Creating child...');
+      const childId = await childService.createChild(newParentId, {
+        firstName: childNameValue,
+        age: parseInt(childAgeValue),
+        points: 0,
+        level: 1,
+        avatar: childAvatarValue,
+        dailyScreenTimeLimit: parseInt(onboardingChildLimit) || 60,
+        screenTimeStartTime: onboardingChildStart || '07:00',
+        screenTimeEndTime: onboardingChildEnd || '20:00',
+      });
+      console.log('Child created successfully:', childId);
+      
+      // Reload children to include the newly created child
+      await loadChildren();
+      
+      // TODO: Prompt for chore assignment after child creation
+      // This will be implemented in the next step
+      
+      console.log('Onboarding completed successfully');
+      setShowOnboarding(false);
+      setActiveTab('Home');
+    } catch (error) {
+      console.error('Error completing onboarding:', error);
+      Alert.alert('Error', 'Failed to save your information. Please try again.');
+    }
   };
 
   const prevOnboardingStep = () => {
@@ -4156,9 +4856,9 @@ export const ParentDashboard: React.FC = () => {
       case 'Home':
         return <HomeTab />;
       case 'Children':
-        return <ChildrenManagementTab onHomePress={handleHomePress} />;
+        return <ChildrenManagementTab onHomePress={handleHomePress} children={children} onChildrenChange={loadChildren} />;
       case 'Chores':
-        return <ChoresManagementTab onHomePress={handleHomePress} />;
+        return <ChoresManagementTab onHomePress={handleHomePress} children={children} />;
       case 'Reports':
         return <ReportsTab onHomePress={handleHomePress} />;
       case 'Settings':
@@ -4219,18 +4919,20 @@ export const ParentDashboard: React.FC = () => {
       <LinearGradient
         colors={['#63B3ED', '#8EE3C2']}
         style={{
-          padding: 24,
-          paddingTop: 60,
+          padding: 8,
+          paddingTop: 45,
+          paddingBottom: 8,
           borderBottomLeftRadius: 20,
           borderBottomRightRadius: 20
         }}
       >
-        <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#FFF', marginBottom: 4 }}>
-          Chorelito AI
-        </Text>
-        <Text style={{ fontSize: 14, color: 'rgba(255, 255, 255, 0.9)' }}>
-          Parent Dashboard
-        </Text>
+        <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+          <Image 
+            source={require('../../../assets/Chorelito_Header_No_Bkgrd_sm.png')} 
+            style={{ width: 300, height: 80 }}
+            resizeMode="contain"
+          />
+        </View>
       </LinearGradient>
 
       {/* AI Top Tabs Navigation */}
@@ -4239,7 +4941,7 @@ export const ParentDashboard: React.FC = () => {
       {/* Tab Content */}
       {renderTabContent()}
 
-    </View>
+        </View>
   );
 };
 
@@ -4464,7 +5166,7 @@ const onboardingStyles = StyleSheet.create({
     backgroundColor: '#F0FFF4',
     padding: 20,
     borderRadius: 12,
-    marginTop: 24,
+          marginTop: 24,
     alignItems: 'center',
   },
   completionMessageText: {
@@ -4474,7 +5176,7 @@ const onboardingStyles = StyleSheet.create({
     textAlign: 'center',
   },
   footer: {
-    padding: 20,
+          padding: 20,
     paddingTop: 30,
     paddingBottom: 20,
     backgroundColor: '#FFFDF9',

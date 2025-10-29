@@ -318,4 +318,162 @@ Your Firebase setup is secure as long as you:
 
 ---
 
-**Ready to deploy?** Run the commands in Step 3-6 in your terminal! 🚀
+**Ready to deploy?** Run the commands in Step 3-6 in your terminal! ��
+
+## Firestore Data Integration
+
+### Overview
+
+The app now uses Firestore for persistent data storage instead of local state. All parent, child, chore, and settings data is stored in Firestore with proper relationships.
+
+### Database Structure
+
+#### Collections
+
+1. **`parents`** - Parent user accounts
+
+   - `id` (string): Unique parent ID
+   - `name` (string): Parent's display name
+   - `phone` (string): Normalized phone number (unique)
+   - `avatar` (string): Emoji or avatar identifier
+   - `role` (string): Always "parent"
+   - `createdAt` (Timestamp): Account creation time
+   - `updatedAt` (Timestamp): Last update time
+   - `settings` (object): Default screen time settings
+     - `defaultDailyLimit` (number): Default daily minutes
+     - `quietHoursStart` (string): e.g., "07:00"
+     - `quietHoursEnd` (string): e.g., "21:00"
+     - `maxRequests` (number): Max time requests per day
+
+2. **`children`** - Child profiles
+
+   - `id` (string): Unique child ID (auto-generated)
+   - `parentId` (string): Reference to parent document ID
+   - `name` (string): Child's name
+   - `age` (number): Child's age
+   - `points` (number): Gamification points
+   - `level` (number): Level based on points
+   - `avatar` (string): Emoji or avatar
+   - `dailyScreenTimeLimit` (number): Minutes allowed per day
+   - `screenTimeStartTime` (string): Allowed start time
+   - `screenTimeEndTime` (string): Allowed end time
+   - `phone` (string, optional): Child's phone for login
+   - `createdAt` (Timestamp)
+   - `updatedAt` (Timestamp)
+
+3. **`chores`** - Chore assignments
+
+   - `id` (string): Unique chore ID
+   - `childId` (string): Reference to child
+   - `title` (string): Chore name
+   - `description` (string, optional): Details
+   - `points` (number): Points awarded
+   - `status` (string): "open" | "completed" | "verified" | "rejected"
+   - `assignedBy` (string): Parent user ID
+   - `assignedAt` (Timestamp)
+   - `completedAt` (Timestamp, optional)
+   - `verifiedAt` (Timestamp, optional)
+   - `notes` (string, optional): Verification notes
+   - `imageUrl` (string, optional): Photo proof URL
+
+4. **`screenTime`** - Daily screen time tracking
+
+   - `id` (string): Composite ID "childId_date"
+   - `childId` (string): Reference to child
+   - `date` (string): "YYYY-MM-DD"
+   - `usedMinutes` (number): Time used today
+   - `budgetMinutes` (number): Available time
+   - `createdAt` (Timestamp)
+   - `updatedAt` (Timestamp)
+
+5. **`reports`** - Weekly progress reports
+   - `id` (string): Unique report ID
+   - `childId` (string): Reference to child
+   - `weekOf` (string): "YYYY-MM-DD" of week start
+   - `choresCompleted` (number)
+   - `choresTotal` (number)
+   - `pointsEarned` (number)
+   - `screenTimeUsed` (number)
+   - `screenTimeAllowed` (number)
+   - `achievements` (array): Achievement IDs
+   - `createdAt` (Timestamp)
+
+### Authentication Context
+
+The app uses an `AuthContext` that persists user authentication state:
+
+- **`parentId`**: Current parent's unique ID
+- **`phoneNumber`**: Current parent's phone (for verification)
+- **`setParentId(id, phone)`**: Set authenticated user
+- **`clearAuth()`**: Logout and clear state
+- **`isAuthenticated`**: Boolean auth status
+
+Authentication state is persisted using `AsyncStorage` for offline capability.
+
+### Data Services
+
+All Firestore operations are accessed through service objects:
+
+#### `parentService`
+
+- `saveParent(id, data)` - Create or update parent
+- `getParent(id)` - Get parent by ID
+- `updateSettings(id, settings)` - Update parent settings
+- `findByPhone(phone)` - Find parent by phone number
+
+#### `childService`
+
+- `createChild(parentId, childData)` - Create new child profile
+- `getChild(id)` - Get child by ID
+- `getChildrenByParent(parentId)` - Get all children for parent
+- `updateChild(id, updates)` - Update child profile
+- `deleteChild(id)` - Delete child profile
+- `findByPhone(phone)` - Find child by phone (for login)
+
+#### `choreService`
+
+- `createChore(choreData)` - Assign new chore
+- `getChore(id)` - Get chore by ID
+- `getChoresByChild(childId)` - Get all chores for child
+- `updateChore(id, updates)` - Update chore status
+- `deleteChore(id)` - Remove chore
+
+#### `screenTimeService`
+
+- `getOrCreateEntry(childId, date)` - Get or create daily entry
+- `updateUsage(childId, date, minutes)` - Update time used
+- `grantBonus(childId, date, minutes)` - Add bonus time
+
+#### `reportService`
+
+- `getWeeklyReport(childId, weekOf)` - Get weekly report
+- `saveReport(childId, weekOf, data)` - Create or update report
+
+### Utility Functions
+
+- `generateUniqueId()` - Generate unique string ID
+- `normalizePhone(phone)` - Normalize phone to digits only
+
+### Onboarding Flow Integration
+
+During onboarding, the app:
+
+1. Generates a unique parent ID
+2. Normalizes the phone number
+3. Saves parent profile to Firestore
+4. Saves parent settings (screen time defaults)
+5. Creates the first child profile if provided
+6. Saves authentication state to `AsyncStorage`
+7. Continues to the Home screen
+
+All data is immediately available via Firestore queries.
+
+### Next Steps for Full Integration
+
+1. **Load data on mount**: Fetch parent, children, chores on screen load
+2. **Update Settings screen**: Load and save settings via Firestore
+3. **Update Children screen**: Load children from Firestore, save changes
+4. **Update Chores screen**: Load and create chores via Firestore
+5. **Update Reports screen**: Generate reports from Firestore data
+6. **Add child login**: Implement phone-based authentication for child app
+7. **Real-time updates**: Use Firestore listeners for live data updates
